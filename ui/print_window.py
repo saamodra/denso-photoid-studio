@@ -12,7 +12,7 @@ from PIL import Image
 import os
 import tempfile
 from modules.print_manager import PrintManager
-from modules.image_processor import ImageProcessor
+# from modules.image_processor import ImageProcessor  # Not needed for direct implementation
 from config import UI_SETTINGS, PRINT_SETTINGS
 
 
@@ -76,7 +76,7 @@ class PrintWindow(QMainWindow):
         super().__init__()
         self.processed_image = processed_image
         self.print_manager = PrintManager()
-        self.image_processor = ImageProcessor()
+        self.image_processor = None  # Not needed for direct implementation
         self.print_thread = None
         self.id_card_image = None
         self.init_ui()
@@ -86,9 +86,8 @@ class PrintWindow(QMainWindow):
     def init_ui(self):
         """Initialize user interface"""
         self.setWindowTitle("Print Preview")
-        # Make window responsive - start with reasonable size but allow resizing
-        self.setGeometry(100, 100, 1000, 600)
-        self.setMinimumSize(800, 500)  # Set minimum size for responsiveness
+        # Set to fullscreen by default
+        self.showFullScreen()
 
         # Central widget
         central_widget = QWidget()
@@ -148,9 +147,11 @@ class PrintWindow(QMainWindow):
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center the entire content
 
         # Section title
         title = QLabel("Print Preview")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center the title
         title.setStyleSheet("""
             QLabel {
                 font-size: 16px;
@@ -161,11 +162,16 @@ class PrintWindow(QMainWindow):
         """)
         layout.addWidget(title)
 
+        # Preview container to center the preview label
+        preview_container = QFrame()
+        preview_container_layout = QVBoxLayout(preview_container)
+        preview_container_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        preview_container_layout.setContentsMargins(0, 0, 0, 0)
+
         # Preview label - portrait orientation for ID card
         self.preview_label = QLabel()
-        # Set aspect ratio to match ID card (portrait: 3:4 ratio)
-        self.preview_label.setMinimumSize(300, 400)
-        self.preview_label.setMaximumSize(400, 533)  # Maintain 3:4 aspect ratio
+        self.preview_label.setMinimumSize(540, 720)
+        self.preview_label.setMaximumSize(540, 720)
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.preview_label.setStyleSheet("""
             QLabel {
@@ -175,7 +181,9 @@ class PrintWindow(QMainWindow):
                 padding: 15px;
             }
         """)
-        layout.addWidget(self.preview_label)
+        preview_container_layout.addWidget(self.preview_label)
+
+        layout.addWidget(preview_container)
 
         # Preview info
         self.preview_info = QLabel()
@@ -223,7 +231,6 @@ class PrintWindow(QMainWindow):
         # Refresh button
         refresh_btn = QPushButton("🔄 Refresh Printers")
         refresh_btn.clicked.connect(self.refresh_printers)
-        refresh_btn.setMaximumHeight(35)
         layout.addWidget(refresh_btn)
 
         layout.addStretch()
@@ -333,13 +340,40 @@ class PrintWindow(QMainWindow):
     def create_id_card(self):
         """Create ID card from processed image"""
         try:
-            # Always create proper ID card layout (template enabled by default)
-            self.id_card_image = self.image_processor.create_id_card_layout(self.processed_image)
+            # Create ID card layout directly to avoid dependency issues
+            self.id_card_image = self.create_id_card_layout_direct(self.processed_image)
             self.update_preview()
 
         except Exception as e:
             print(f"Error creating ID card: {e}")
             self.preview_label.setText("Error creating\nID card layout")
+
+    def create_id_card_layout_direct(self, processed_image):
+        """Create final ID card layout in portrait orientation - direct implementation"""
+        # Standard ID card dimensions in portrait (53.98 x 85.6 mm at 300 DPI)
+        dpi = 300
+        width_mm, height_mm = 53.98, 85.6  # Portrait orientation
+        width_px = int(width_mm * dpi / 25.4)
+        height_px = int(height_mm * dpi / 25.4)
+
+        print(f"ID card dimensions: {width_px}x{height_px} pixels")
+        print(f"Input image size: {processed_image.size}")
+
+        # Create ID card canvas in portrait
+        id_card = Image.new('RGB', (width_px, height_px), 'white')
+
+        # Resize processed image to fit card while maintaining aspect ratio
+        processed_image.thumbnail((width_px, height_px), Image.Resampling.LANCZOS)
+        print(f"After thumbnail resize: {processed_image.size}")
+
+        # Center the image on the card
+        paste_x = (width_px - processed_image.size[0]) // 2
+        paste_y = (height_px - processed_image.size[1]) // 2
+        print(f"Pasting at position: ({paste_x}, {paste_y})")
+
+        id_card.paste(processed_image, (paste_x, paste_y))
+
+        return id_card
 
     def update_preview(self):
         """Update print preview"""
@@ -373,12 +407,14 @@ class PrintWindow(QMainWindow):
         """Display preview image with correct aspect ratio (object-fit: contain behavior) - portrait orientation"""
         try:
             # Calculate the maximum size that fits within the portrait preview area
-            # Account for padding (15px on each side = 30px total)
-            max_width = 400 - 30  # 370px
-            max_height = 533 - 30  # 503px
+            # The preview label is set to 540x720, account for padding
+            max_width = 540 - 30  # 510px
+            max_height = 720 - 30  # 690px
 
             # Get original image dimensions
             orig_width, orig_height = image.size
+            print(f"Display preview - Original image size: {orig_width}x{orig_height}")
+            print(f"Display preview - Max display size: {max_width}x{max_height}")
 
             # Calculate scale factor to fit within bounds while maintaining aspect ratio
             scale_x = max_width / orig_width
@@ -388,6 +424,7 @@ class PrintWindow(QMainWindow):
             # Calculate new dimensions
             new_width = int(orig_width * scale)
             new_height = int(orig_height * scale)
+            print(f"Display preview - Scaled size: {new_width}x{new_height}")
 
             # Resize image maintaining aspect ratio
             display_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
@@ -440,10 +477,13 @@ class PrintWindow(QMainWindow):
                 self.status_label.setText("No ID card to save")
                 return
 
-            # Save processed image
-            save_path = self.image_processor.save_processed_image(
-                self.id_card_image, "id_card_final.png"
-            )
+            # Save processed image directly
+            from config import PROCESSED_DIR
+            save_path = os.path.join(PROCESSED_DIR, "id_card_final.png")
+            os.makedirs(PROCESSED_DIR, exist_ok=True)
+
+            # Save PIL Image
+            self.id_card_image.save(save_path, format='PNG', quality=95)
 
             self.status_label.setText(f"ID card saved to: {save_path}")
 

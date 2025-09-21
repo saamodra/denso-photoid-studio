@@ -102,24 +102,29 @@ class IDCardPhotoApp:
         """Show main camera window"""
         try:
             if self.main_window:
-                self.main_window.close()
+                # If main window exists, just show it and restart camera
+                self.main_window.show()
+                self.main_window.raise_()  # Bring to front
+                self.main_window.activateWindow()  # Activate window
+                self.main_window.setup_camera()  # Restart camera
+            else:
+                # Create new main window
+                self.main_window = MainWindow()
+                self.main_window.photos_captured.connect(self.on_photos_captured)
 
-            self.main_window = MainWindow()
-            self.main_window.photos_captured.connect(self.on_photos_captured)
+                # Ensure window appears on screen
+                self.main_window.show()
+                self.main_window.raise_()  # Bring to front
+                self.main_window.activateWindow()  # Activate window
 
-            # Ensure window appears on screen
-            self.main_window.show()
-            self.main_window.raise_()  # Bring to front
-            self.main_window.activateWindow()  # Activate window
-
-            # Force window to center and be visible
-            screen = self.app.primaryScreen()
-            if screen:
-                screen_geometry = screen.availableGeometry()
-                window_geometry = self.main_window.geometry()
-                x = (screen_geometry.width() - window_geometry.width()) // 2
-                y = (screen_geometry.height() - window_geometry.height()) // 2
-                self.main_window.move(x, y)
+                # Force window to center and be visible
+                screen = self.app.primaryScreen()
+                if screen:
+                    screen_geometry = screen.availableGeometry()
+                    window_geometry = self.main_window.geometry()
+                    x = (screen_geometry.width() - window_geometry.width()) // 2
+                    y = (screen_geometry.height() - window_geometry.height()) // 2
+                    self.main_window.move(x, y)
 
             self.current_window = self.main_window
             print(f"✅ Main window shown at position: {self.main_window.x()}, {self.main_window.y()}")
@@ -157,8 +162,9 @@ class IDCardPhotoApp:
             self.selection_window.show()
             self.current_window = self.selection_window
 
-            # Close main window to save resources
+            # Stop camera and close main window to save resources
             if self.main_window:
+                self.main_window.stop_camera()  # Stop camera before hiding
                 self.main_window.hide()
 
         except Exception as e:
@@ -263,7 +269,9 @@ class IDCardPhotoApp:
     def restart_workflow(self):
         """Restart the entire workflow"""
         try:
-            # Close all windows except main
+            # Stop camera and close all windows except main
+            if self.main_window:
+                self.main_window.stop_camera()
             if self.print_window:
                 self.print_window.close()
             if self.processing_window:

@@ -100,14 +100,6 @@ def main():
             print(f"  {venv_python} -m pip install -r requirements.txt")
             sys.exit(1)
 
-    # Create assets if they don't exist
-    if not os.path.exists('assets/backgrounds/blue_solid.png'):
-        print("Creating default assets...")
-        try:
-            subprocess.check_call([venv_python, "create_assets.py"])
-        except Exception as e:
-            print(f"Warning: Could not create assets: {e}")
-
     # Launch application
     print("Launching ID Card Photo Machine...")
     try:

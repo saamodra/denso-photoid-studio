@@ -126,15 +126,6 @@ def main():
         print("pip install -r requirements.txt")
         sys.exit(1)
 
-    # Create assets using virtual environment
-    print("\nCreating application assets...")
-    try:
-        venv_python = get_venv_python()
-        subprocess.check_call([venv_python, "create_assets.py"])
-    except Exception as e:
-        print(f"Error creating assets: {e}")
-        print(f"You can create assets manually by running: {get_venv_python()} create_assets.py")
-
     # Optional: Create desktop shortcut
     response = input("\nWould you like to create a desktop shortcut? (y/n): ")
     if response.lower() in ['y', 'yes']:

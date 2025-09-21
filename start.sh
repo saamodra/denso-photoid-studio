@@ -32,13 +32,6 @@ else
     echo "✅ Dependencies already installed"
 fi
 
-# Create assets if they don't exist
-if [ ! -f "assets/backgrounds/blue_solid.png" ]; then
-    echo "🎨 Creating application assets..."
-    python create_assets.py
-    echo "✅ Assets created"
-fi
-
 # Launch application
 echo "🚀 Launching ID Card Photo Machine..."
 echo ""

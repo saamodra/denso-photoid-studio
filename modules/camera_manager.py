@@ -6,7 +6,7 @@ import cv2
 import time
 import os
 from datetime import datetime
-from PyQt6.QtCore import QThread, pyqtSignal, QTimer
+from PyQt6.QtCore import QThread, pyqtSignal, QTimer, QMutex
 from PyQt6.QtGui import QImage, QPixmap
 import numpy as np
 from config import CAMERA_SETTINGS, CAPTURES_DIR
@@ -22,11 +22,15 @@ class CameraThread(QThread):
         self.backend = backend
         self.camera = None
         self.running = False
+        self.camera_initialized = False
+        self._lock = QMutex()  # Add mutex for thread safety
 
     def run(self):
         """Main camera thread loop"""
         try:
             print(f"Camera thread starting for camera {self.camera_index} with backend {self.backend}")
+
+            # Initialize camera
             self.camera = cv2.VideoCapture(self.camera_index, self.backend)
 
             if not self.camera.isOpened():
@@ -50,11 +54,27 @@ class CameraThread(QThread):
                 return
 
             print(f"Camera {self.camera_index} frame test successful, starting preview loop")
+            self.camera_initialized = True
             self.running = True
             frame_count = 0
 
             while self.running:
-                ret, frame = self.camera.read()
+                # Check if camera is still valid before reading
+                if not self.camera or not self.camera.isOpened():
+                    print(f"Camera {self.camera_index} is no longer valid, stopping")
+                    break
+
+                # Use mutex to ensure thread safety
+                self._lock.lock()
+                try:
+                    ret, frame = self.camera.read()
+                except Exception as e:
+                    print(f"Error reading from camera {self.camera_index}: {e}")
+                    self._lock.unlock()
+                    break
+                finally:
+                    self._lock.unlock()
+
                 if ret and frame is not None:
                     # Flip frame horizontally for mirror effect
                     frame = cv2.flip(frame, 1)
@@ -74,14 +94,41 @@ class CameraThread(QThread):
             print(f"Camera thread error: {e}")
         finally:
             print(f"Camera thread for camera {self.camera_index} ending")
+            self._cleanup_camera()
 
     def stop(self):
-        """Stop camera thread"""
+        """Stop camera thread safely"""
+        print(f"Stopping camera thread for camera {self.camera_index}")
         self.running = False
+
+        # Wait for the thread to finish naturally
+        if self.isRunning():
+            self.quit()
+            self.wait(5000)  # Wait up to 5 seconds for thread to finish
+
+        # Force cleanup if thread is still running
+        if self.isRunning():
+            print(f"Force terminating camera thread for camera {self.camera_index}")
+            self.terminate()
+            self.wait(1000)  # Wait 1 second for termination
+
+    def _cleanup_camera(self):
+        """Safely cleanup camera resources"""
         if self.camera:
-            self.camera.release()
-        self.quit()
-        self.wait()
+            try:
+                # Use mutex to ensure thread safety during cleanup
+                self._lock.lock()
+                try:
+                    if self.camera.isOpened():
+                        self.camera.release()
+                        print(f"Camera {self.camera_index} released successfully")
+                finally:
+                    self._lock.unlock()
+            except Exception as e:
+                print(f"Error releasing camera {self.camera_index}: {e}")
+            finally:
+                self.camera = None
+                self.camera_initialized = False
 
 
 class CameraManager:
@@ -251,8 +298,10 @@ class CameraManager:
     def stop_preview(self):
         """Stop camera preview"""
         if self.camera_thread:
+            print("Stopping camera preview...")
             self.camera_thread.stop()
             self.camera_thread = None
+            print("Camera preview stopped")
 
     def _update_current_frame(self, frame):
         """Update current frame for capture"""
@@ -286,20 +335,30 @@ class CameraManager:
 
     def _capture_fresh_frame(self):
         """Capture a fresh frame directly from camera"""
-        if not self.camera_thread or not self.camera_thread.camera:
+        if not self.camera_thread or not self.camera_thread.camera or not self.camera_thread.camera_initialized:
             return None
 
         try:
-            # Read multiple frames to get the latest one
-            for _ in range(3):  # Read a few frames to get the most recent
-                ret, frame = self.camera_thread.camera.read()
-                if not ret or frame is None:
-                    return None
+            # Check if camera is still valid
+            if not self.camera_thread.camera.isOpened():
+                print("Camera is not opened, cannot capture fresh frame")
+                return None
 
-            # Apply same processing as in camera thread
-            frame = cv2.flip(frame, 1)  # Mirror effect
-            print("Captured fresh frame from camera")
-            return frame.copy()
+            # Use mutex to ensure thread safety
+            self.camera_thread._lock.lock()
+            try:
+                # Read multiple frames to get the latest one
+                for _ in range(3):  # Read a few frames to get the most recent
+                    ret, frame = self.camera_thread.camera.read()
+                    if not ret or frame is None:
+                        return None
+
+                # Apply same processing as in camera thread
+                frame = cv2.flip(frame, 1)  # Mirror effect
+                print("Captured fresh frame from camera")
+                return frame.copy()
+            finally:
+                self.camera_thread._lock.unlock()
 
         except Exception as e:
             print(f"Error capturing fresh frame: {e}")

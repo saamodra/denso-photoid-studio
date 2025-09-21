@@ -10,7 +10,6 @@ APP_VERSION = "1.0.0"
 # Camera settings
 CAMERA_SETTINGS = {
     'default_resolution': (1920, 1080),
-    'capture_format': 'jpg',
     'capture_quality': 95,
     'preview_fps': 30,
     'capture_count': 4,
@@ -20,29 +19,18 @@ CAMERA_SETTINGS = {
 # Processing settings
 PROCESSING_SETTINGS = {
     'background_removal_model': 'u2net',
-    'output_resolution': (600, 800),  # High resolution for ID cards in portrait orientation (3:4 aspect ratio)
     'portrait_aspect_ratio': 3.0 / 4.0,  # Width/Height ratio for portrait ID card photos
-    'supported_formats': ['jpg', 'png'],
-    'temp_folder': 'temp/processed/',
-    'capture_folder': 'temp/captures/'
 }
 
 # Print settings
 PRINT_SETTINGS = {
-    'default_paper_size': 'CR80',  # ID card standard
-    'print_quality': 'high',
-    'color_mode': 'color',
-    'margins': (5, 5, 5, 5),  # mm
-    'dpi': 300,
-    'id_card_size': (85.6, 53.98)  # mm - standard CR80 size
+    'id_card_size': (53.98, 85.6),  # mm - standard CR80 size
+    'dpi': 300  # Dots per inch for printing
 }
 
 # UI settings
 UI_SETTINGS = {
-    'window_size': (1280, 720),
     'camera_preview_size': (960, 720),
-    'photo_grid_size': (2, 2),
-    'theme': 'modern',
     'font_size': 12
 }
 

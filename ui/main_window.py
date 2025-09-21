@@ -29,21 +29,30 @@ class PhotoCaptureThread(QThread):
         """Capture photos with proper delays"""
         captured_paths = []
 
-        for i in range(self.count):
-            # Wait for delay (except first photo)
-            if i > 0:
-                print(f"Waiting {self.delay} seconds before next photo...")
-                self.sleep(self.delay)  # Use QThread.sleep for proper delays
+        try:
+            for i in range(self.count):
+                # Check if thread should stop
+                if self.isInterruptionRequested():
+                    print("Photo capture thread interrupted")
+                    break
 
-            # Capture photo
-            print(f"Capturing photo {i+1}/{self.count}...")
-            photo_path = self.camera_manager.capture_photo()
+                # Wait for delay (except first photo)
+                if i > 0:
+                    print(f"Waiting {self.delay} seconds before next photo...")
+                    self.sleep(self.delay)  # Use QThread.sleep for proper delays
 
-            if photo_path:
-                captured_paths.append(photo_path)
+                # Capture photo
+                print(f"Capturing photo {i+1}/{self.count}...")
+                photo_path = self.camera_manager.capture_photo()
 
-            # Emit progress signal
-            self.photo_captured.emit(i + 1, self.count, photo_path)
+                if photo_path:
+                    captured_paths.append(photo_path)
+
+                # Emit progress signal
+                self.photo_captured.emit(i + 1, self.count, photo_path)
+
+        except Exception as e:
+            print(f"Error in photo capture thread: {e}")
 
         # Emit completion signal
         self.capture_complete.emit(captured_paths)
@@ -73,7 +82,8 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         """Initialize user interface"""
         self.setWindowTitle("ID Card Photo Machine")
-        self.setGeometry(100, 100, *UI_SETTINGS['window_size'])
+        # Set to fullscreen by default
+        self.showFullScreen()
 
         # Central widget
         central_widget = QWidget()
@@ -100,14 +110,27 @@ class MainWindow(QMainWindow):
 
         layout = QVBoxLayout(camera_frame)
 
+        # Camera preview container with overlay support
+        self.camera_container = QFrame()
+        self.camera_container.setMinimumSize(*UI_SETTINGS['camera_preview_size'])
+        self.camera_container.setStyleSheet("""
+            QFrame {
+                background-color: #2c3e50;
+                border: 2px solid #34495e;
+                border-radius: 10px;
+            }
+        """)
+
+        # Use absolute positioning for overlay
+        self.camera_container_layout = QVBoxLayout(self.camera_container)
+        self.camera_container_layout.setContentsMargins(0, 0, 0, 0)
+
         # Camera preview label
         self.camera_label = QLabel()
         self.camera_label.setMinimumSize(*UI_SETTINGS['camera_preview_size'])
         self.camera_label.setStyleSheet("""
             QLabel {
-                background-color: #2c3e50;
-                border: 2px solid #34495e;
-                border-radius: 10px;
+                background-color: transparent;
                 color: white;
                 font-size: 16px;
                 text-align: center;
@@ -116,10 +139,11 @@ class MainWindow(QMainWindow):
         self.camera_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.camera_label.setText("Camera Preview\nLoading...")
 
-        layout.addWidget(self.camera_label)
+        self.camera_container_layout.addWidget(self.camera_label)
 
-        # Countdown overlay (hidden by default)
+        # Countdown overlay (positioned absolutely over camera)
         self.countdown_label = QLabel()
+        self.countdown_label.setParent(self.camera_container)
         self.countdown_label.setStyleSheet("""
             QLabel {
                 background-color: rgba(0, 0, 0, 150);
@@ -133,8 +157,10 @@ class MainWindow(QMainWindow):
         self.countdown_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.countdown_label.hide()
 
-        # Overlay countdown on camera preview
-        # Remove setScaledContents to prevent stretching - aspect ratio will be handled in frame_to_qpixmap
+        # Position countdown to cover the entire camera container
+        self.countdown_label.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
+
+        layout.addWidget(self.camera_container)
 
         # Capture button
         self.capture_button = QPushButton("📸 Take Photos")
@@ -384,7 +410,8 @@ class MainWindow(QMainWindow):
         """Update countdown display"""
         # Show countdown overlay
         self.countdown_label.setText(str(count))
-        self.countdown_label.setGeometry(self.camera_label.geometry())
+        # Position countdown to cover the entire camera container
+        self.countdown_label.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
         self.countdown_label.show()
         self.countdown_label.raise_()
 
@@ -503,15 +530,40 @@ class MainWindow(QMainWindow):
             }
         """)
 
-    def closeEvent(self, event):
-        """Handle window close event"""
-        # Stop camera and cleanup
-        if self.camera_manager:
-            self.camera_manager.cleanup()
+    def resizeEvent(self, event):
+        """Handle window resize event"""
+        super().resizeEvent(event)
+        # Update countdown position if it's visible
+        if hasattr(self, 'countdown_label') and self.countdown_label.isVisible():
+            self.countdown_label.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
+
+    def stop_camera(self):
+        """Stop camera preview and cleanup resources"""
+        print("Stopping camera preview...")
 
         # Stop photo capture thread if running
         if self.photo_capture_thread and self.photo_capture_thread.isRunning():
+            print("Stopping photo capture thread...")
+            self.photo_capture_thread.requestInterruption()
             self.photo_capture_thread.quit()
-            self.photo_capture_thread.wait()
+            self.photo_capture_thread.wait(3000)  # Wait up to 3 seconds
+            if self.photo_capture_thread.isRunning():
+                print("Force terminating photo capture thread...")
+                self.photo_capture_thread.terminate()
+                self.photo_capture_thread.wait(1000)
+            self.photo_capture_thread = None
+
+        # Stop camera preview
+        if self.camera_manager:
+            self.camera_manager.stop_preview()
+
+    def closeEvent(self, event):
+        """Handle window close event"""
+        # Use the same cleanup as stop_camera
+        self.stop_camera()
+
+        # Additional cleanup
+        if self.camera_manager:
+            self.camera_manager.cleanup()
 
         event.accept()

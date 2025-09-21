@@ -341,20 +341,28 @@ class ImageProcessor:
         width_px = int(width_mm * dpi / 25.4)
         height_px = int(height_mm * dpi / 25.4)
 
+        print(f"ID card dimensions: {width_px}x{height_px} pixels")
+        print(f"Input image size: {processed_image.size}")
+
         # Create ID card canvas in portrait
         id_card = Image.new('RGB', (width_px, height_px), 'white')
 
         # Ensure processed image is portrait
         if processed_image.size[0] > processed_image.size[1]:
             # Rotate landscape image to portrait
+            print("Rotating landscape image to portrait")
             processed_image = processed_image.rotate(90, expand=True)
+            print(f"After rotation: {processed_image.size}")
 
         # Resize processed image to fit card while maintaining aspect ratio
         processed_image.thumbnail((width_px, height_px), Image.Resampling.LANCZOS)
+        print(f"After thumbnail resize: {processed_image.size}")
 
         # Center the image on the card
         paste_x = (width_px - processed_image.size[0]) // 2
         paste_y = (height_px - processed_image.size[1]) // 2
+        print(f"Pasting at position: ({paste_x}, {paste_y})")
+
         id_card.paste(processed_image, (paste_x, paste_y))
 
         return id_card

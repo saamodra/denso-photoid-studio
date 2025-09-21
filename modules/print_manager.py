@@ -282,7 +282,7 @@ class PrintManager:
         preview_image = self.prepare_image_for_printing(image, copies)
 
         # Add print margins and page border for preview
-        margin = 50
+        margin = 0
         width, height = preview_image.size
         preview_width = width + 2 * margin
         preview_height = height + 2 * margin

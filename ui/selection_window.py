@@ -122,7 +122,8 @@ class SelectionWindow(QMainWindow):
     def init_ui(self):
         """Initialize user interface"""
         self.setWindowTitle("Select Your Best Photo")
-        self.setGeometry(100, 100, 1000, 700)
+        # Set to fullscreen by default
+        self.showFullScreen()
 
         # Central widget
         central_widget = QWidget()

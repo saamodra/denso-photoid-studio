@@ -53,10 +53,9 @@ class BackgroundOption(QWidget):
 
     selected = pyqtSignal(str)  # Emits background type when selected
 
-    def __init__(self, background_type, background_name, processor):
+    def __init__(self, background_type, processor):
         super().__init__()
         self.background_type = background_type
-        self.background_name = background_name
         self.processor = processor
         self.is_selected = False
         self.setup_ui()
@@ -64,26 +63,15 @@ class BackgroundOption(QWidget):
     def setup_ui(self):
         """Setup background option UI"""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)  # Remove spacing
 
         # Background preview
         self.preview_label = QLabel()
-        self.preview_label.setFixedSize(80, 80)
+        self.preview_label.setFixedSize(192, 256)  # Larger preview for better visibility
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.preview_label.setStyleSheet(self.get_preview_style())
         layout.addWidget(self.preview_label)
-
-        # Background name
-        name_label = QLabel(self.background_name)
-        name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        name_label.setStyleSheet("""
-            QLabel {
-                font-size: 10px;
-                color: #2c3e50;
-                margin-top: 5px;
-            }
-        """)
-        layout.addWidget(name_label)
 
         # Load preview
         self.load_preview()
@@ -119,8 +107,7 @@ class BackgroundOption(QWidget):
             # Get small background sample
             background = self.processor.get_background(self.background_type)
             if background:
-                # Resize to preview size
-                background.thumbnail((76, 76), Image.Resampling.LANCZOS)
+                background.thumbnail((192, 256), Image.Resampling.LANCZOS)
 
                 # Save temporary preview
                 with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
@@ -129,7 +116,7 @@ class BackgroundOption(QWidget):
                     pixmap = QPixmap(temp_file.name)
                     # Scale while maintaining aspect ratio
                     scaled_pixmap = pixmap.scaled(
-                        76, 76, Qt.AspectRatioMode.KeepAspectRatio,
+                        192, 256, Qt.AspectRatioMode.KeepAspectRatio,
                         Qt.TransformationMode.SmoothTransformation
                     )
                     self.preview_label.setPixmap(scaled_pixmap)
@@ -170,7 +157,7 @@ class ProcessingWindow(QMainWindow):
         self.processor = ImageProcessor()
         self.processing_thread = None
         self.processed_image = None
-        self.current_background = 'blue_solid'
+        self.current_background = 'denso_id_card'  # Default to denso template
         self.background_options = []
         self.init_ui()
         self.load_original_image()
@@ -179,7 +166,8 @@ class ProcessingWindow(QMainWindow):
     def init_ui(self):
         """Initialize user interface"""
         self.setWindowTitle("Background Processing")
-        self.setGeometry(100, 100, 1200, 800)
+        # Set to fullscreen by default
+        self.showFullScreen()
 
         # Central widget
         central_widget = QWidget()
@@ -231,13 +219,17 @@ class ProcessingWindow(QMainWindow):
 
         layout = QVBoxLayout(frame)
 
-        # Preview layout
-        preview_layout = QHBoxLayout()
+        # Main content layout with titles and previews
+        content_layout = QHBoxLayout()
+        content_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Before section
-        before_frame = QFrame()
-        before_layout = QVBoxLayout(before_frame)
+        # Before section (Original)
+        before_section = QFrame()
+        before_section_layout = QVBoxLayout(before_section)
+        before_section_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        before_section_layout.setContentsMargins(0, 0, 0, 0)
 
+        # Original title
         before_title = QLabel("Original")
         before_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         before_title.setStyleSheet("""
@@ -248,10 +240,11 @@ class ProcessingWindow(QMainWindow):
                 margin-bottom: 10px;
             }
         """)
-        before_layout.addWidget(before_title)
+        before_section_layout.addWidget(before_title)
 
+        # Original preview
         self.original_label = QLabel()
-        self.original_label.setFixedSize(350, 450)
+        self.original_label.setFixedSize(360, 480)
         self.original_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.original_label.setStyleSheet("""
             QLabel {
@@ -260,12 +253,15 @@ class ProcessingWindow(QMainWindow):
                 background-color: #f8f9fa;
             }
         """)
-        before_layout.addWidget(self.original_label)
+        before_section_layout.addWidget(self.original_label)
 
-        # After section
-        after_frame = QFrame()
-        after_layout = QVBoxLayout(after_frame)
+        # After section (Processed)
+        after_section = QFrame()
+        after_section_layout = QVBoxLayout(after_section)
+        after_section_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        after_section_layout.setContentsMargins(0, 0, 0, 0)
 
+        # Processed title
         after_title = QLabel("Processed")
         after_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         after_title.setStyleSheet("""
@@ -276,10 +272,11 @@ class ProcessingWindow(QMainWindow):
                 margin-bottom: 10px;
             }
         """)
-        after_layout.addWidget(after_title)
+        after_section_layout.addWidget(after_title)
 
+        # Processed preview
         self.processed_label = QLabel()
-        self.processed_label.setFixedSize(350, 450)
+        self.processed_label.setFixedSize(360, 480)
         self.processed_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.processed_label.setStyleSheet("""
             QLabel {
@@ -290,11 +287,11 @@ class ProcessingWindow(QMainWindow):
             }
         """)
         self.processed_label.setText("Click 'Process Photo'\nto see result")
-        after_layout.addWidget(self.processed_label)
+        after_section_layout.addWidget(self.processed_label)
 
-        preview_layout.addWidget(before_frame)
-        preview_layout.addWidget(after_frame)
-        layout.addLayout(preview_layout)
+        content_layout.addWidget(before_section)
+        content_layout.addWidget(after_section)
+        layout.addLayout(content_layout)
 
         return frame
 
@@ -305,33 +302,28 @@ class ProcessingWindow(QMainWindow):
 
         layout = QVBoxLayout(frame)
 
-        # Title
+        # Title - aligned with other section titles
         title = QLabel("Background Options")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("""
             QLabel {
-                font-size: 16px;
+                font-size: 14px;
                 font-weight: bold;
                 color: #34495e;
-                margin-bottom: 15px;
+                margin-bottom: 10px;
             }
         """)
         layout.addWidget(title)
 
-        # Background options scroll area
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setMaximumHeight(400)
+        # Add spacing to align with image previews
+        layout.addSpacing(20)
 
         self.backgrounds_container = QWidget()
         self.backgrounds_layout = QGridLayout(self.backgrounds_container)
         self.backgrounds_layout.setSpacing(10)
+        self.backgrounds_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
 
-        scroll_area.setWidget(self.backgrounds_container)
-        layout.addWidget(scroll_area)
-
-        # Enhancement controls
-        enhancement_group = self.create_enhancement_group()
-        layout.addWidget(enhancement_group)
+        layout.addWidget(self.backgrounds_container)
 
         # Process button
         self.process_button = QPushButton("🎨 Process Photo")
@@ -340,43 +332,6 @@ class ProcessingWindow(QMainWindow):
         layout.addWidget(self.process_button)
 
         return frame
-
-    def create_enhancement_group(self):
-        """Create image enhancement controls"""
-        group = QGroupBox("Image Enhancement")
-        layout = QGridLayout(group)
-
-        # Brightness
-        brightness_label = QLabel("Brightness:")
-        brightness_label.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; }")
-        layout.addWidget(brightness_label, 0, 0)
-        self.brightness_slider = QSlider(Qt.Orientation.Horizontal)
-        self.brightness_slider.setRange(50, 150)
-        self.brightness_slider.setValue(100)
-        self.brightness_slider.valueChanged.connect(self.on_enhancement_changed)
-        layout.addWidget(self.brightness_slider, 0, 1)
-
-        # Contrast
-        contrast_label = QLabel("Contrast:")
-        contrast_label.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; }")
-        layout.addWidget(contrast_label, 1, 0)
-        self.contrast_slider = QSlider(Qt.Orientation.Horizontal)
-        self.contrast_slider.setRange(50, 150)
-        self.contrast_slider.setValue(100)
-        self.contrast_slider.valueChanged.connect(self.on_enhancement_changed)
-        layout.addWidget(self.contrast_slider, 1, 1)
-
-        # Sharpness
-        sharpness_label = QLabel("Sharpness:")
-        sharpness_label.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; }")
-        layout.addWidget(sharpness_label, 2, 0)
-        self.sharpness_slider = QSlider(Qt.Orientation.Horizontal)
-        self.sharpness_slider.setRange(50, 150)
-        self.sharpness_slider.setValue(100)
-        self.sharpness_slider.valueChanged.connect(self.on_enhancement_changed)
-        layout.addWidget(self.sharpness_slider, 2, 1)
-
-        return group
 
     def create_progress_section(self):
         """Create progress section"""
@@ -452,37 +407,31 @@ class ProcessingWindow(QMainWindow):
             self.original_label.setText("Error loading\noriginal image")
 
     def create_background_options(self):
-        """Create background option widgets"""
+        """Create background option widgets - only white and denso template"""
         # Clear existing options
         for option in self.background_options:
             option.setParent(None)
         self.background_options.clear()
 
-        # Get available backgrounds
-        backgrounds = self.processor.get_background_list()
+        # Only show white and denso template options
+        backgrounds = ['denso_id_card', 'white_solid']
 
         # Create option widgets
         for i, bg_type in enumerate(backgrounds):
             row = i // 2
             col = i % 2
 
-            # Format background name
-            if bg_type in self.processor.id_card_templates:
-                # Use template name from config
-                bg_name = self.processor.id_card_templates[bg_type]['config']['name']
-            else:
-                # Use formatted background name
-                bg_name = bg_type.replace('_', ' ').title()
-
-            option = BackgroundOption(bg_type, bg_name, self.processor)
+            option = BackgroundOption(bg_type, self.processor)
             option.selected.connect(self.on_background_selected)
 
             self.backgrounds_layout.addWidget(option, row, col)
             self.background_options.append(option)
 
-        # Select first option by default
+        # Select first option by default and update current_background
         if self.background_options:
             self.background_options[0].set_selected(True)
+            # Update current_background to match the first selected option
+            self.current_background = self.background_options[0].background_type
 
     def on_background_selected(self, background_type):
         """Handle background selection"""
@@ -502,11 +451,6 @@ class ProcessingWindow(QMainWindow):
         if self.processed_image:
             self.process_photo()
 
-    def on_enhancement_changed(self):
-        """Handle enhancement slider changes"""
-        # Re-process if already processed
-        if self.processed_image:
-            QTimer.singleShot(500, self.process_photo)  # Debounce
 
     def process_photo(self):
         """Process photo with current settings"""
@@ -538,17 +482,8 @@ class ProcessingWindow(QMainWindow):
         """Handle processing completion"""
         self.processed_image = processed_image
 
-        # Apply enhancements
-        brightness = self.brightness_slider.value() / 100.0
-        contrast = self.contrast_slider.value() / 100.0
-        sharpness = self.sharpness_slider.value() / 100.0
-
-        enhanced_image = self.processor.enhance_image(
-            processed_image, brightness, contrast, sharpness
-        )
-
-        # Display result
-        self.display_processed_image(enhanced_image)
+        # Display result directly without enhancements
+        self.display_processed_image(processed_image)
 
         # Hide progress and enable buttons
         self.progress_bar.hide()
@@ -556,8 +491,8 @@ class ProcessingWindow(QMainWindow):
         self.process_button.setEnabled(True)
         self.next_button.setEnabled(True)
 
-        # Store enhanced image
-        self.processed_image = enhanced_image
+        # Store processed image
+        self.processed_image = processed_image
 
     def on_processing_error(self, error_message):
         """Handle processing error"""
@@ -602,11 +537,6 @@ class ProcessingWindow(QMainWindow):
         self.next_button.setEnabled(False)
         self.progress_label.setText("Ready to process")
         self.processed_label.setText("Click 'Process Photo'\nto see result")
-
-        # Reset sliders
-        self.brightness_slider.setValue(100)
-        self.contrast_slider.setValue(100)
-        self.sharpness_slider.setValue(100)
 
     def on_back_clicked(self):
         """Handle back button click"""

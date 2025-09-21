@@ -30,13 +30,6 @@ if errorlevel 1 (
     echo ✅ Dependencies already installed
 )
 
-REM Create assets if they don't exist
-if not exist "assets\backgrounds\blue_solid.png" (
-    echo 🎨 Creating application assets...
-    python create_assets.py
-    echo ✅ Assets created
-)
-
 REM Launch application
 echo 🚀 Launching ID Card Photo Machine...
 echo.
