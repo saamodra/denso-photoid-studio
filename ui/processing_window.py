@@ -467,7 +467,12 @@ class ProcessingWindow(QMainWindow):
             col = i % 2
 
             # Format background name
-            bg_name = bg_type.replace('_', ' ').title()
+            if bg_type in self.processor.id_card_templates:
+                # Use template name from config
+                bg_name = self.processor.id_card_templates[bg_type]['config']['name']
+            else:
+                # Use formatted background name
+                bg_name = bg_type.replace('_', ' ').title()
 
             option = BackgroundOption(bg_type, bg_name, self.processor)
             option.selected.connect(self.on_background_selected)

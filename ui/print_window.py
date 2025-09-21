@@ -86,57 +86,68 @@ class PrintWindow(QMainWindow):
     def init_ui(self):
         """Initialize user interface"""
         self.setWindowTitle("Print Preview")
-        self.setGeometry(100, 100, 1000, 700)
+        # Make window responsive - start with reasonable size but allow resizing
+        self.setGeometry(100, 100, 1000, 600)
+        self.setMinimumSize(800, 500)  # Set minimum size for responsiveness
 
         # Central widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        # Main layout
-        main_layout = QVBoxLayout(central_widget)
+        # Main layout - use horizontal layout for better space utilization
+        main_layout = QHBoxLayout(central_widget)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
+
+        # Left side - Preview section (portrait orientation)
+        left_layout = QVBoxLayout()
+        preview_section = self.create_preview_section()
+        left_layout.addWidget(preview_section)
+
+        # Right side - Settings and controls
+        right_layout = QVBoxLayout()
+        right_layout.setSpacing(10)
 
         # Title
         title = QLabel("Print Preview - ID Card")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("""
             QLabel {
-                font-size: 20px;
+                font-size: 18px;
                 font-weight: bold;
                 color: #2c3e50;
-                margin: 15px;
+                margin: 10px;
             }
         """)
-        main_layout.addWidget(title)
-
-        # Content layout
-        content_layout = QHBoxLayout()
-        main_layout.addLayout(content_layout)
-
-        # Preview section
-        preview_section = self.create_preview_section()
-        content_layout.addWidget(preview_section, 60)  # 60% width
+        right_layout.addWidget(title)
 
         # Settings section
         settings_section = self.create_settings_section()
-        content_layout.addWidget(settings_section, 40)  # 40% width
+        right_layout.addWidget(settings_section)
 
         # Status section
         status_section = self.create_status_section()
-        main_layout.addWidget(status_section)
+        right_layout.addWidget(status_section)
 
         # Button section
         button_section = self.create_button_section()
-        main_layout.addWidget(button_section)
+        right_layout.addWidget(button_section)
+
+        # Add layouts to main layout
+        main_layout.addLayout(left_layout, 60)  # 60% width for preview
+        main_layout.addLayout(right_layout, 40)  # 40% width for controls
 
         # Apply styling
         self.apply_style()
 
     def create_preview_section(self):
-        """Create print preview section"""
+        """Create print preview section - portrait orientation like ID card"""
         frame = QFrame()
         frame.setFrameStyle(QFrame.Shape.StyledPanel)
 
         layout = QVBoxLayout(frame)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
 
         # Section title
         title = QLabel("Print Preview")
@@ -145,21 +156,23 @@ class PrintWindow(QMainWindow):
                 font-size: 16px;
                 font-weight: bold;
                 color: #34495e;
-                margin-bottom: 15px;
+                margin-bottom: 10px;
             }
         """)
         layout.addWidget(title)
 
-        # Preview label
+        # Preview label - portrait orientation for ID card
         self.preview_label = QLabel()
-        self.preview_label.setMinimumSize(400, 500)
+        # Set aspect ratio to match ID card (portrait: 3:4 ratio)
+        self.preview_label.setMinimumSize(300, 400)
+        self.preview_label.setMaximumSize(400, 533)  # Maintain 3:4 aspect ratio
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.preview_label.setStyleSheet("""
             QLabel {
                 border: 2px solid #bdc3c7;
                 border-radius: 10px;
                 background-color: #f8f9fa;
-                padding: 20px;
+                padding: 15px;
             }
         """)
         layout.addWidget(self.preview_label)
@@ -169,9 +182,9 @@ class PrintWindow(QMainWindow):
         self.preview_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.preview_info.setStyleSheet("""
             QLabel {
-                font-size: 12px;
+                font-size: 11px;
                 color: #7f8c8d;
-                margin-top: 10px;
+                margin-top: 5px;
             }
         """)
         layout.addWidget(self.preview_info)
@@ -179,11 +192,13 @@ class PrintWindow(QMainWindow):
         return frame
 
     def create_settings_section(self):
-        """Create print settings section"""
+        """Create print settings section - simplified"""
         frame = QFrame()
         frame.setFrameStyle(QFrame.Shape.StyledPanel)
 
         layout = QVBoxLayout(frame)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
 
         # Title
         title = QLabel("Print Settings")
@@ -192,7 +207,7 @@ class PrintWindow(QMainWindow):
                 font-size: 16px;
                 font-weight: bold;
                 color: #34495e;
-                margin-bottom: 15px;
+                margin-bottom: 10px;
             }
         """)
         layout.addWidget(title)
@@ -205,17 +220,10 @@ class PrintWindow(QMainWindow):
         copy_group = self.create_copy_group()
         layout.addWidget(copy_group)
 
-        # Quality settings group
-        quality_group = self.create_quality_group()
-        layout.addWidget(quality_group)
-
-        # Layout options group
-        layout_group = self.create_layout_group()
-        layout.addWidget(layout_group)
-
         # Refresh button
         refresh_btn = QPushButton("🔄 Refresh Printers")
         refresh_btn.clicked.connect(self.refresh_printers)
+        refresh_btn.setMaximumHeight(35)
         layout.addWidget(refresh_btn)
 
         layout.addStretch()
@@ -223,92 +231,60 @@ class PrintWindow(QMainWindow):
         return frame
 
     def create_printer_group(self):
-        """Create printer selection group"""
+        """Create printer selection group - compact"""
         group = QGroupBox("Printer")
         layout = QVBoxLayout(group)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(5)
 
         # Printer dropdown
         self.printer_combo = QComboBox()
+        self.printer_combo.setMaximumHeight(30)
         layout.addWidget(self.printer_combo)
 
         # Printer status
         self.printer_status = QLabel("Status: Checking...")
-        self.printer_status.setStyleSheet("QLabel { font-size: 10px; color: #2c3e50; font-weight: bold; }")
+        self.printer_status.setStyleSheet("QLabel { font-size: 9px; color: #2c3e50; font-weight: bold; }")
         layout.addWidget(self.printer_status)
 
         return group
 
     def create_copy_group(self):
-        """Create copy settings group"""
+        """Create copy settings group - compact"""
         group = QGroupBox("Copies")
         layout = QGridLayout(group)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(5)
 
         # Number of copies
         copies_label = QLabel("Copies:")
-        copies_label.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; }")
+        copies_label.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; font-size: 11px; }")
         layout.addWidget(copies_label, 0, 0)
         self.copies_spin = QSpinBox()
         self.copies_spin.setRange(1, 20)
         self.copies_spin.setValue(1)
+        self.copies_spin.setMaximumHeight(25)
         self.copies_spin.valueChanged.connect(self.update_preview)
         layout.addWidget(self.copies_spin, 0, 1)
 
         return group
 
-    def create_quality_group(self):
-        """Create quality settings group"""
-        group = QGroupBox("Quality")
-        layout = QVBoxLayout(group)
-
-        # Quality radio buttons
-        self.quality_group = QButtonGroup()
-
-        quality_options = [
-            ("Draft", "draft"),
-            ("Normal", "normal"),
-            ("High Quality", "high")
-        ]
-
-        for i, (label, value) in enumerate(quality_options):
-            radio = QRadioButton(label)
-            if value == "high":  # Default to high quality
-                radio.setChecked(True)
-            self.quality_group.addButton(radio, i)
-            layout.addWidget(radio)
-
-        return group
-
-    def create_layout_group(self):
-        """Create layout options group"""
-        group = QGroupBox("Layout Options")
-        layout = QVBoxLayout(group)
-
-        # ID card template checkbox
-        self.template_check = QCheckBox("Use ID card template")
-        self.template_check.setChecked(True)
-        self.template_check.toggled.connect(self.update_preview)
-        layout.addWidget(self.template_check)
-
-        # Crop to fit checkbox
-        self.crop_check = QCheckBox("Crop to fit")
-        self.crop_check.setChecked(True)
-        layout.addWidget(self.crop_check)
-
-        return group
 
     def create_status_section(self):
-        """Create status section"""
+        """Create status section - compact"""
         frame = QFrame()
         layout = QVBoxLayout(frame)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(5)
 
         # Status label
         self.status_label = QLabel("Ready to print")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_label.setStyleSheet("""
             QLabel {
-                font-size: 14px;
+                font-size: 12px;
                 color: #2c3e50;
-                margin: 10px;
+                margin: 5px;
             }
         """)
         layout.addWidget(self.status_label)
@@ -316,47 +292,49 @@ class PrintWindow(QMainWindow):
         # Progress bar
         self.progress_bar = QProgressBar()
         self.progress_bar.hide()
+        self.progress_bar.setMaximumHeight(20)
         layout.addWidget(self.progress_bar)
 
         return frame
 
     def create_button_section(self):
-        """Create button section"""
+        """Create button section - compact for responsiveness"""
         frame = QFrame()
-        layout = QHBoxLayout(frame)
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(8)
+
+        # All buttons in a single row for compactness
+        button_row = QHBoxLayout()
 
         # Back button
-        self.back_button = QPushButton("← Back to Processing")
-        self.back_button.setMinimumHeight(50)
+        self.back_button = QPushButton("← Back")
+        self.back_button.setMinimumHeight(40)
         self.back_button.clicked.connect(self.on_back_clicked)
 
         # Save button
-        self.save_button = QPushButton("💾 Save ID Card")
-        self.save_button.setMinimumHeight(50)
+        self.save_button = QPushButton("💾 Save")
+        self.save_button.setMinimumHeight(40)
         self.save_button.clicked.connect(self.save_id_card)
 
         # Print button
-        self.print_button = QPushButton("🖨️ Print ID Card")
-        self.print_button.setMinimumHeight(50)
+        self.print_button = QPushButton("🖨️ Print")
+        self.print_button.setMinimumHeight(40)
         self.print_button.clicked.connect(self.print_id_card)
 
-        layout.addWidget(self.back_button)
-        layout.addWidget(self.save_button)
-        layout.addStretch()
-        layout.addWidget(self.print_button)
+        button_row.addWidget(self.back_button)
+        button_row.addWidget(self.save_button)
+        button_row.addWidget(self.print_button)
+
+        layout.addLayout(button_row)
 
         return frame
 
     def create_id_card(self):
         """Create ID card from processed image"""
         try:
-            if self.template_check.isChecked():
-                # Create proper ID card layout
-                self.id_card_image = self.image_processor.create_id_card_layout(self.processed_image)
-            else:
-                # Use processed image as-is
-                self.id_card_image = self.processed_image
-
+            # Always create proper ID card layout (template enabled by default)
+            self.id_card_image = self.image_processor.create_id_card_layout(self.processed_image)
             self.update_preview()
 
         except Exception as e:
@@ -392,24 +370,35 @@ class PrintWindow(QMainWindow):
             self.preview_label.setText("Error updating\npreview")
 
     def display_preview(self, image):
-        """Display preview image"""
+        """Display preview image with correct aspect ratio (object-fit: contain behavior) - portrait orientation"""
         try:
-            # Resize for display
-            display_image = image.copy()
-            display_image.thumbnail((380, 480), Image.Resampling.LANCZOS)
+            # Calculate the maximum size that fits within the portrait preview area
+            # Account for padding (15px on each side = 30px total)
+            max_width = 400 - 30  # 370px
+            max_height = 533 - 30  # 503px
+
+            # Get original image dimensions
+            orig_width, orig_height = image.size
+
+            # Calculate scale factor to fit within bounds while maintaining aspect ratio
+            scale_x = max_width / orig_width
+            scale_y = max_height / orig_height
+            scale = min(scale_x, scale_y)  # Use the smaller scale to ensure it fits
+
+            # Calculate new dimensions
+            new_width = int(orig_width * scale)
+            new_height = int(orig_height * scale)
+
+            # Resize image maintaining aspect ratio
+            display_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
             # Save temporary preview
             with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
                 display_image.save(temp_file.name, "JPEG", quality=90)
 
                 pixmap = QPixmap(temp_file.name)
-                # Scale while maintaining aspect ratio
-                from PyQt6.QtCore import Qt
-                scaled_pixmap = pixmap.scaled(
-                    380, 480, Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
-                )
-                self.preview_label.setPixmap(scaled_pixmap)
+                # Set the pixmap directly without additional scaling to maintain aspect ratio
+                self.preview_label.setPixmap(pixmap)
                 self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
                 # Clean up

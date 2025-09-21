@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 import os
 from rembg import remove, new_session
-from config import PROCESSING_SETTINGS, BACKGROUNDS_DIR, TEMPLATES_DIR, PROCESSED_DIR, BACKGROUND_TEMPLATES
+from config import PROCESSING_SETTINGS, BACKGROUNDS_DIR, TEMPLATES_DIR, PROCESSED_DIR, BACKGROUND_TEMPLATES, ID_CARD_TEMPLATES
 
 
 class ImageProcessor:
@@ -16,6 +16,7 @@ class ImageProcessor:
 
     def __init__(self):
         self.background_templates = self.load_backgrounds()
+        self.id_card_templates = self.load_id_card_templates()
         self.rembg_session = new_session(PROCESSING_SETTINGS['background_removal_model'])
 
     def load_backgrounds(self):
@@ -37,6 +38,20 @@ class ImageProcessor:
             backgrounds = self._create_default_backgrounds()
 
         return backgrounds
+
+    def load_id_card_templates(self):
+        """Load available ID card templates"""
+        templates = {}
+
+        for template_id, template_config in ID_CARD_TEMPLATES.items():
+            template_path = os.path.join(TEMPLATES_DIR, template_config['file'])
+            if os.path.exists(template_path):
+                templates[template_id] = {
+                    'path': template_path,
+                    'config': template_config
+                }
+
+        return templates
 
     def _create_default_backgrounds(self):
         """Create default background templates"""
@@ -124,16 +139,33 @@ class ImageProcessor:
         if background is None:
             return subject_image
 
-        # Resize subject to fit ID card proportions
-        subject_resized = self._resize_for_id_card(subject_image)
-
-        # Composite images
-        final_image = self._composite_images(background, subject_resized)
-
-        return final_image
+        # Check if this is a template with specific positioning
+        if background_type in self.id_card_templates:
+            return self._apply_template_with_positioning(subject_image, background_type, background)
+        else:
+            # Use regular background processing
+            # Resize subject to fit ID card proportions
+            subject_resized = self._resize_for_id_card(subject_image)
+            # Composite images
+            final_image = self._composite_images(background, subject_resized)
+            return final_image
 
     def get_background(self, background_type):
-        """Get background image by type"""
+        """Get background image by type (includes templates)"""
+        # Check if it's a template first
+        if background_type in self.id_card_templates:
+            template_info = self.id_card_templates[background_type]
+            template_path = template_info['path']
+            if os.path.exists(template_path):
+                background = Image.open(template_path)
+                # Convert RGBA to RGB if needed
+                if background.mode == 'RGBA':
+                    rgb_background = Image.new('RGB', background.size, (255, 255, 255))
+                    rgb_background.paste(background, mask=background.split()[-1] if background.mode == 'RGBA' else None)
+                    return rgb_background
+                return background
+
+        # Handle regular backgrounds
         if background_type not in self.background_templates:
             background_type = 'blue_solid'
 
@@ -199,6 +231,65 @@ class ImageProcessor:
 
         # Fallback: return original image
         return image
+
+    def _apply_template_with_positioning(self, subject_image, template_id, template_background):
+        """Apply ID card template with precise photo positioning"""
+        template_config = self.id_card_templates[template_id]['config']
+        photo_area = template_config['photo_area']
+
+        # Get template dimensions
+        template_width, template_height = template_background.size
+
+        # Convert mm to pixels (assuming 300 DPI)
+        dpi = 300
+        mm_to_px = dpi / 25.4
+
+        # Calculate photo area in pixels
+        photo_width_px = int(photo_area['width_mm'] * mm_to_px)
+        photo_height_px = int(photo_area['height_mm'] * mm_to_px)
+
+        # Calculate position in pixels (from top-left of template)
+        x_offset_px = int(photo_area['x_offset_mm'] * mm_to_px)
+        y_offset_px = int(photo_area['y_offset_mm'] * mm_to_px)
+
+        # The x_offset_mm is center position, so we need to adjust for left edge
+        photo_left_px = x_offset_px - (photo_width_px // 2)
+        photo_top_px = y_offset_px
+
+        # Resize subject image to fit the exact photo area
+        # Ensure the subject is portrait and fits the photo area
+        subject_resized = self._resize_to_exact_area(subject_image, photo_width_px, photo_height_px)
+
+        # Create final image by pasting subject onto template
+        final_image = template_background.copy()
+
+        # Paste the subject image at the precise position
+        if subject_resized.mode == 'RGBA':
+            final_image.paste(subject_resized, (photo_left_px, photo_top_px), subject_resized)
+        else:
+            final_image.paste(subject_resized, (photo_left_px, photo_top_px))
+
+        return final_image
+
+    def _resize_to_exact_area(self, image, target_width, target_height):
+        """Resize image to fit exact area, cropping if necessary to maintain aspect ratio"""
+        original_width, original_height = image.size
+        target_ratio = target_width / target_height
+        original_ratio = original_width / original_height
+
+        if original_ratio > target_ratio:
+            # Image is wider than target - crop width
+            new_width = int(original_height * target_ratio)
+            left = (original_width - new_width) // 2
+            image = image.crop((left, 0, left + new_width, original_height))
+        elif original_ratio < target_ratio:
+            # Image is taller than target - crop height
+            new_height = int(original_width / target_ratio)
+            top = (original_height - new_height) // 2
+            image = image.crop((0, top, original_width, top + new_height))
+
+        # Now resize to exact target dimensions
+        return image.resize((target_width, target_height), Image.Resampling.LANCZOS)
 
     def _resize_for_id_card(self, image):
         """Resize image to fit ID card proportions"""
@@ -313,8 +404,11 @@ class ImageProcessor:
         return save_path
 
     def get_background_list(self):
-        """Get list of available backgrounds"""
-        return list(self.background_templates.keys())
+        """Get list of available backgrounds and templates"""
+        # Combine backgrounds and templates
+        backgrounds = list(self.background_templates.keys())
+        templates = list(self.id_card_templates.keys())
+        return backgrounds + templates
 
     def create_before_after_comparison(self, original_path, processed_image):
         """Create before/after comparison image"""

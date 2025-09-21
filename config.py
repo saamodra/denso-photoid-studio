@@ -39,8 +39,8 @@ PRINT_SETTINGS = {
 
 # UI settings
 UI_SETTINGS = {
-    'window_size': (1200, 800),
-    'camera_preview_size': (640, 480),
+    'window_size': (1280, 720),
+    'camera_preview_size': (960, 720),
     'photo_grid_size': (2, 2),
     'theme': 'modern',
     'font_size': 12
@@ -68,4 +68,18 @@ BACKGROUND_TEMPLATES = {
     'light_blue': '#E3F2FD',
     'gradient_blue': 'gradient_blue.png',
     'professional_gray': '#F5F5F5'
+}
+
+# ID Card templates with positioning specifications
+ID_CARD_TEMPLATES = {
+    'denso_id_card': {
+        'file': 'id_card.png',
+        'photo_area': {
+            'width_mm': 30.0,
+            'height_mm': 37.0,
+            'x_offset_mm': 18.3,  # Center position from left edge
+            'y_offset_mm': 16.0,  # Distance from top edge
+        },
+        'name': 'DENSO ID Card Template'
+    }
 }
