@@ -17,6 +17,8 @@ from config import UI_SETTINGS, CAMERA_SETTINGS
 class PhotoCaptureThread(QThread):
     """Thread for capturing multiple photos without blocking UI"""
     photo_captured = pyqtSignal(int, int, str)  # current, total, photo_path
+    capture_starting = pyqtSignal(int, int)  # current, total - when about to capture
+    delay_countdown = pyqtSignal(int, int, int)  # current, total, remaining_delay
     capture_complete = pyqtSignal(list)  # captured_paths
 
     def __init__(self, camera_manager, count, delay):
@@ -36,10 +38,8 @@ class PhotoCaptureThread(QThread):
                     print("Photo capture thread interrupted")
                     break
 
-                # Wait for delay (except first photo)
-                if i > 0:
-                    print(f"Waiting {self.delay} seconds before next photo...")
-                    self.sleep(self.delay)  # Use QThread.sleep for proper delays
+                # Signal that we're about to capture a photo
+                self.capture_starting.emit(i + 1, self.count)
 
                 # Capture photo
                 print(f"Capturing photo {i+1}/{self.count}...")
@@ -50,6 +50,17 @@ class PhotoCaptureThread(QThread):
 
                 # Emit progress signal
                 self.photo_captured.emit(i + 1, self.count, photo_path)
+
+                # Wait for delay with countdown AFTER photo is captured (except last photo)
+                if i < self.count - 1:
+                    print(f"Starting {self.delay} second delay after photo {i+1}...")
+                    # Wait 1 second for capture overlay to be hidden, then start delay countdown
+                    self.sleep(1)
+                    for remaining in range(int(self.delay), 0, -1):
+                        if self.isInterruptionRequested():
+                            break
+                        self.delay_countdown.emit(i + 1, self.count, remaining)
+                        self.sleep(1)  # Sleep for 1 second
 
         except Exception as e:
             print(f"Error in photo capture thread: {e}")
@@ -157,8 +168,42 @@ class MainWindow(QMainWindow):
         self.countdown_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.countdown_label.hide()
 
-        # Position countdown to cover the entire camera container
+        # Capture overlay (positioned absolutely over camera)
+        self.capture_overlay = QLabel()
+        self.capture_overlay.setParent(self.camera_container)
+        self.capture_overlay.setStyleSheet("""
+            QLabel {
+                background-color: rgba(255, 0, 0, 100);
+                color: white;
+                font-size: 48px;
+                font-weight: bold;
+                border-radius: 10px;
+                text-align: center;
+            }
+        """)
+        self.capture_overlay.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.capture_overlay.hide()
+
+        # Delay countdown overlay (positioned absolutely over camera)
+        self.delay_overlay = QLabel()
+        self.delay_overlay.setParent(self.camera_container)
+        self.delay_overlay.setStyleSheet("""
+            QLabel {
+                background-color: rgba(0, 100, 0, 150);
+                color: white;
+                font-size: 36px;
+                font-weight: bold;
+                border-radius: 10px;
+                text-align: center;
+            }
+        """)
+        self.delay_overlay.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.delay_overlay.hide()
+
+        # Position overlays to cover the entire camera container
         self.countdown_label.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
+        self.capture_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
+        self.delay_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
 
         layout.addWidget(self.camera_container)
 
@@ -377,13 +422,13 @@ class MainWindow(QMainWindow):
 
     def update_camera_frame(self, frame):
         """Update camera preview frame"""
-        if not self.countdown_active:
-            # Convert frame to QPixmap and display with proper aspect ratio
-            pixmap = self.camera_manager.frame_to_qpixmap(
-                frame, UI_SETTINGS['camera_preview_size'], maintain_aspect_ratio=True
-            )
-            self.camera_label.setPixmap(pixmap)
-            self.camera_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Always update the camera preview, even during countdown
+        # Convert frame to QPixmap and display with proper aspect ratio
+        pixmap = self.camera_manager.frame_to_qpixmap(
+            frame, UI_SETTINGS['camera_preview_size'], maintain_aspect_ratio=True
+        )
+        self.camera_label.setPixmap(pixmap)
+        self.camera_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
 
     def start_photo_capture(self):
@@ -429,9 +474,39 @@ class MainWindow(QMainWindow):
         self.photo_capture_thread = PhotoCaptureThread(
             self.camera_manager, count, delay
         )
+        self.photo_capture_thread.capture_starting.connect(self.on_capture_starting)
         self.photo_capture_thread.photo_captured.connect(self.on_photo_captured)
+        self.photo_capture_thread.delay_countdown.connect(self.on_delay_countdown)
         self.photo_capture_thread.capture_complete.connect(self.on_capture_complete)
         self.photo_capture_thread.start()
+
+    def on_capture_starting(self, current, total):
+        """Handle when a photo is about to be captured"""
+        # Hide delay overlay if it's showing
+        self.delay_overlay.hide()
+
+        # Show capture overlay
+        self.capture_overlay.setText(f"📸 CAPTURING\nPhoto {current}/{total}")
+        self.capture_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
+        self.capture_overlay.show()
+        self.capture_overlay.raise_()
+        print(f"About to capture photo {current}/{total}")
+
+        # Hide capture overlay after 1 second
+        QTimer.singleShot(1000, self.hide_capture_overlay)
+
+    def hide_capture_overlay(self):
+        """Hide the capture overlay"""
+        self.capture_overlay.hide()
+
+    def on_delay_countdown(self, current, total, remaining):
+        """Handle delay countdown between photos"""
+        # Show delay overlay
+        self.delay_overlay.setText(f"⏱️ DELAY\nNext photo in {remaining}s\nPhoto {current}/{total}")
+        self.delay_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
+        self.delay_overlay.show()
+        self.delay_overlay.raise_()
+        print(f"Delay countdown: {remaining} seconds until photo {current + 1}")
 
     def on_photo_captured(self, current, total, photo_path):
         """Handle individual photo captured"""
@@ -442,6 +517,10 @@ class MainWindow(QMainWindow):
     def on_capture_complete(self, captured_paths):
         """Handle capture sequence completion"""
         print(f"Capture sequence complete: {len(captured_paths)} photos captured")
+
+        # Hide all overlays
+        self.delay_overlay.hide()
+        self.capture_overlay.hide()
 
         # Re-enable capture button
         self.capture_button.setEnabled(True)
@@ -533,9 +612,13 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, event):
         """Handle window resize event"""
         super().resizeEvent(event)
-        # Update countdown position if it's visible
+        # Update overlay positions if they're visible
         if hasattr(self, 'countdown_label') and self.countdown_label.isVisible():
             self.countdown_label.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
+        if hasattr(self, 'capture_overlay') and self.capture_overlay.isVisible():
+            self.capture_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
+        if hasattr(self, 'delay_overlay') and self.delay_overlay.isVisible():
+            self.delay_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
 
     def stop_camera(self):
         """Stop camera preview and cleanup resources"""
