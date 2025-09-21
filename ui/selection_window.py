@@ -17,7 +17,7 @@ class PhotoThumbnail(QLabel):
 
     clicked = pyqtSignal(str)  # Emits photo path when clicked
 
-    def __init__(self, photo_path, size=(200, 200)):
+    def __init__(self, photo_path, size=(400, 400)):
         super().__init__()
         self.photo_path = photo_path
         self.thumbnail_size = size
@@ -192,7 +192,7 @@ class SelectionWindow(QMainWindow):
         # Photos container
         photos_container = QWidget()
         self.photos_layout = QGridLayout(photos_container)
-        self.photos_layout.setSpacing(15)
+        self.photos_layout.setSpacing(5)
 
         scroll_area.setWidget(photos_container)
         layout.addWidget(scroll_area)
@@ -283,21 +283,14 @@ class SelectionWindow(QMainWindow):
             thumbnail.setParent(None)
         self.thumbnails.clear()
 
-        # Calculate grid layout
-        num_photos = len(self.photo_paths)
-        if num_photos <= 4:
-            cols = 2
-        elif num_photos <= 9:
-            cols = 3
-        else:
-            cols = 4
+        cols = 2
 
         # Create thumbnails
         for i, photo_path in enumerate(self.photo_paths):
             row = i // cols
             col = i % cols
 
-            thumbnail = PhotoThumbnail(photo_path, size=(180, 180))
+            thumbnail = PhotoThumbnail(photo_path, size=(480, 360))
             thumbnail.clicked.connect(self.on_photo_selected)
 
             self.photos_layout.addWidget(thumbnail, row, col)
@@ -339,7 +332,7 @@ class SelectionWindow(QMainWindow):
             image = Image.open(photo_path)
 
             # Resize to fit preview area while maintaining aspect ratio
-            preview_size = (280, 380)
+            preview_size = (600, 450)
             image.thumbnail(preview_size, Image.Resampling.LANCZOS)
 
             # Save temporary preview
