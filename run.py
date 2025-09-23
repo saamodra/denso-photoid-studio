@@ -48,7 +48,7 @@ def install_dependencies_venv(venv_python):
 
 def check_dependencies_venv(venv_python):
     """Check if dependencies are installed in virtual environment"""
-    required_modules = ['PyQt6', 'cv2', 'PIL', 'rembg', 'numpy']
+    required_modules = ['PyQt6', 'cv2', 'PIL', 'mediapipe', 'numpy']
     missing = []
 
     for module in required_modules:

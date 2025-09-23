@@ -344,7 +344,7 @@ def check_dependencies():
     required_modules = [
         'cv2',
         'PIL',
-        'rembg',
+        'mediapipe',
         'numpy',
         'PyQt6'
     ]

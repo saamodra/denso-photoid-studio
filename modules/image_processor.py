@@ -7,7 +7,7 @@ import io
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 import os
-from rembg import remove, new_session
+import mediapipe as mp # Tambahkan import untuk MediaPipe
 from config import PROCESSING_SETTINGS, BACKGROUNDS_DIR, TEMPLATES_DIR, PROCESSED_DIR, BACKGROUND_TEMPLATES, ID_CARD_TEMPLATES
 
 
@@ -15,9 +15,11 @@ class ImageProcessor:
     """Main image processing class"""
 
     def __init__(self):
+        """Initialize the processor, loading resources."""
         self.background_templates = self.load_backgrounds()
         self.id_card_templates = self.load_id_card_templates()
-        self.rembg_session = new_session(PROCESSING_SETTINGS['background_removal_model'])
+        # Inisialisasi model MediaPipe Selfie Segmentation
+        self.selfie_segmentation = mp.solutions.selfie_segmentation.SelfieSegmentation(model_selection=0)
 
     def load_backgrounds(self):
         """Load available background templates"""
@@ -98,25 +100,46 @@ class ImageProcessor:
         return gradient
 
     def remove_background(self, image_path):
-        """Remove background from image using rembg"""
+        """Remove background from image using MediaPipe"""
         try:
-            # Load image
-            with open(image_path, 'rb') as f:
-                input_data = f.read()
-
-            # Remove background
-            output_data = remove(input_data, session=self.rembg_session)
-
-            # Convert to PIL Image
-            no_bg_image = Image.open(io.BytesIO(output_data))
+            # Load image and convert to RGB
+            image = Image.open(image_path).convert('RGB')
+            
+            # Convert PIL Image to NumPy array for MediaPipe processing
+            image_np = np.array(image)
+            
+            # Process the image to get the segmentation mask
+            results = self.selfie_segmentation.process(image_np)
+            
+            # Create a condition where the mask is > 0.1 (you can adjust this threshold)
+            # This creates a boolean mask of the foreground
+            condition = np.stack((results.segmentation_mask,) * 3, axis=-1) > 0.1
+            
+            # Create a transparent background image
+            transparent_bg = np.zeros_like(image_np, dtype=np.uint8)
+            
+            # Apply the condition: where condition is true, use original image, else use transparent
+            output_np = np.where(condition, image_np, transparent_bg)
+            
+            # Convert back to PIL Image
+            no_bg_image = Image.fromarray(output_np)
+            
+            # Add an alpha channel based on the segmentation mask for transparency
+            mask = (results.segmentation_mask * 255).astype('uint8')
+            mask_pil = Image.fromarray(mask, mode='L')
+            
+            # Create the final RGBA image
+            final_image = Image.new('RGBA', no_bg_image.size)
+            final_image.paste(no_bg_image, (0,0))
+            final_image.putalpha(mask_pil)
 
             # Ensure portrait aspect ratio for ID cards
-            no_bg_image = self._ensure_portrait_aspect_ratio(no_bg_image)
+            final_image = self._ensure_portrait_aspect_ratio(final_image)
 
-            return no_bg_image
+            return final_image
 
         except Exception as e:
-            print(f"Error removing background: {e}")
+            print(f"Error removing background with MediaPipe: {e}")
             # Fallback: return original image
             original_image = Image.open(image_path)
             return self._ensure_portrait_aspect_ratio(original_image)
