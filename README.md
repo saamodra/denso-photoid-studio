@@ -16,7 +16,7 @@ A desktop application for automated ID card photo processing using PyQt6.
 - PyQt6
 - OpenCV
 - PIL (Pillow)
-- rembg
+- mediapipe
 - numpy
 
 ## Installation
@@ -147,7 +147,7 @@ python main.py
 - **Flexible Capture**: 1-10 photos with customizable delay
 
 ### Image Processing
-- **AI Background Removal**: Uses rembg library with U2Net model
+- **AI Background Removal**: Uses mediapipe library
 - **Professional Backgrounds**: Multiple background options
 - **Image Enhancement**: Brightness, contrast, and sharpness controls
 - **Real-time Preview**: See changes instantly
