@@ -430,7 +430,6 @@ class MainWindow(QMainWindow):
         self.camera_label.setPixmap(pixmap)
         self.camera_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-
     def start_photo_capture(self):
         """Start photo capture sequence"""
         if self.countdown_active:
