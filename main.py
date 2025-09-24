@@ -11,6 +11,8 @@ from PyQt6.QtGui import QIcon, QFont
 # Add current directory to path for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+from ui.login_window import LoginPage
+from ui.role_selection_window import RoleSelectionWindow
 from ui.main_window import MainWindow
 from ui.selection_window import SelectionWindow
 from ui.processing_window import ProcessingWindow
@@ -33,6 +35,7 @@ class IDCardPhotoApp:
         self.processed_image = None
 
         # Windows
+        self.login_window = None
         self.main_window = None
         self.selection_window = None
         self.processing_window = None
@@ -85,7 +88,9 @@ class IDCardPhotoApp:
                 geometry = primary_screen.availableGeometry()
                 print(f"🖥️  Primary screen: {geometry.width()}x{geometry.height()}")
 
-            self.show_main_window()
+            # self.show_main_window()
+            self.show_login_window()
+
             print("✅ Application UI should now be visible")
             print("   If you don't see the window, check:")
             print("   - Dock for the application icon")
@@ -97,6 +102,90 @@ class IDCardPhotoApp:
             print(f"❌ Application error: {e}")
             self.show_error_dialog("Application Error", str(e))
             return 1
+    
+    def show_login_window(self):
+        """Show login window"""
+        try:
+            if self.login_window:
+                self.current_window.hide()
+
+                # If main window exists, just show it
+                self.login_window.show()
+                self.login_window.raise_()  # Bring to front
+                self.login_window.activateWindow()  # Activate window
+
+            else:
+
+                # Create new main window
+                self.login_window = LoginPage()
+                # Hubungkan sinyal dari halaman login ke fungsi di atas
+                self.login_window.login_successful.connect(self.login_success)
+
+                # Ensure window appears on screen
+                self.login_window.show()
+                self.login_window.raise_()  # Bring to front
+                self.login_window.activateWindow()  # Activate window
+
+                # Force window to center and be visible
+                screen = self.app.primaryScreen()
+                if screen:
+                    screen_geometry = screen.availableGeometry()
+                    window_geometry = self.login_window.geometry()
+                    x = (screen_geometry.width() - window_geometry.width()) // 2
+                    y = (screen_geometry.height() - window_geometry.height()) // 2
+                    self.login_window.move(x, y)
+
+            self.current_window = self.login_window
+            print(f"✅ Login window shown at position: {self.login_window.x()}, {self.login_window.y()}")
+            print(f"✅ Window size: {self.login_window.width()}x{self.login_window.height()}")
+            print(f"✅ Window visible: {self.login_window.isVisible()}")
+
+
+        except Exception as e:
+            print(f"❌ Error showing main window: {e}")
+            self.show_error_dialog("Camera Error",
+                                 f"Failed to initialize camera:\n{str(e)}\n\n"
+                                 "Please ensure your camera is connected and not in use by another application.")
+    
+    def login_success(self):
+        self.current_window.hide()
+        self.show_role_selection_window()
+
+    def show_role_selection_window(self):
+        """Show login window"""
+        try:
+            # Create new role selection window
+            self.role_selection_window = RoleSelectionWindow()
+            # Hubungkan sinyal dari halaman role ke fungsi yg lain
+            self.role_selection_window.user_role_selected.connect(self.show_main_window)
+            self.role_selection_window.logout_successful.connect(self.show_login_window)
+            # self.role_selection_window.admin_role_selected.connect(self.show_info_dialog('Role dipilih', 'Kamu telah memilih role admin'))
+
+            # Ensure window appears on screen
+            self.role_selection_window.show()
+            self.role_selection_window.raise_()  # Bring to front
+            self.role_selection_window.activateWindow()  # Activate window
+
+            # Force window to center and be visible
+            screen = self.app.primaryScreen()
+            if screen:
+                screen_geometry = screen.availableGeometry()
+                window_geometry = self.role_selection_window.geometry()
+                x = (screen_geometry.width() - window_geometry.width()) // 2
+                y = (screen_geometry.height() - window_geometry.height()) // 2
+                self.role_selection_window.move(x, y)
+
+            self.current_window = self.role_selection_window
+            print(f"✅ Login window shown at position: {self.role_selection_window.x()}, {self.role_selection_window.y()}")
+            print(f"✅ Window size: {self.role_selection_window.width()}x{self.role_selection_window.height()}")
+            print(f"✅ Window visible: {self.role_selection_window.isVisible()}")
+
+
+        except Exception as e:
+            print(f"❌ Error showing main window: {e}")
+            self.show_error_dialog("Camera Error",
+                                 f"Failed to initialize camera:\n{str(e)}\n\n"
+                                 "Please ensure your camera is connected and not in use by another application.")
 
     def show_main_window(self):
         """Show main camera window"""
@@ -108,6 +197,7 @@ class IDCardPhotoApp:
                 self.main_window.activateWindow()  # Activate window
                 self.main_window.setup_camera()  # Restart camera
             else:
+                
                 # Create new main window
                 self.main_window = MainWindow()
                 self.main_window.photos_captured.connect(self.on_photos_captured)
@@ -125,6 +215,9 @@ class IDCardPhotoApp:
                     x = (screen_geometry.width() - window_geometry.width()) // 2
                     y = (screen_geometry.height() - window_geometry.height()) // 2
                     self.main_window.move(x, y)
+
+            # close current window open, such as login windows
+            self.current_window.hide()
 
             self.current_window = self.main_window
             print(f"✅ Main window shown at position: {self.main_window.x()}, {self.main_window.y()}")
