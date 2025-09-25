@@ -1,8 +1,72 @@
 import sys
-from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QGridLayout, 
-                             QLabel, QLineEdit, QPushButton, QMessageBox, QFrame)
+from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QGridLayout,
+                             QLabel, QLineEdit, QPushButton, QMessageBox, QFrame, QDialog, QHBoxLayout)
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
+
+class CustomDialog(QDialog):
+    """Custom dialog with consistent styling"""
+    def __init__(self, parent=None, title="", message="", buttons=None):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setModal(True)
+        self.setFixedSize(400, 200)
+
+        # Main layout
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(20)
+
+        # Message label
+        self.message_label = QLabel(message)
+        self.message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.message_label.setWordWrap(True)
+        layout.addWidget(self.message_label)
+
+        # Button layout
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+
+        if buttons is None:
+            buttons = [("OK", QDialog.DialogCode.Accepted)]
+
+        self.buttons = []
+        for text, role in buttons:
+            btn = QPushButton(text)
+            btn.clicked.connect(lambda checked, r=role: self.done(r))
+            button_layout.addWidget(btn)
+            self.buttons.append(btn)
+
+        layout.addLayout(button_layout)
+
+        # Apply styling
+        self.setStyleSheet("""
+            CustomDialog {
+                background-color: #FFFFFF;
+                color: #333333;
+            }
+            QLabel {
+                background-color: #FFFFFF;
+                color: #333333;
+                font-size: 14px;
+            }
+            QPushButton {
+                background-color: #E60012;
+                color: #FFFFFF;
+                font-weight: bold;
+                font-size: 14px;
+                border: none;
+                border-radius: 8px;
+                padding: 8px 16px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #CC0010;
+            }
+            QPushButton:pressed {
+                background-color: #99000C;
+            }
+        """)
 
 class LoginPage(QWidget):
     """
@@ -40,7 +104,7 @@ class LoginPage(QWidget):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setObjectName("TitleLabel")
         container_layout.addWidget(title)
-        
+
         # Sub-judul
         subtitle = QLabel("Silakan login untuk melanjutkan")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -64,7 +128,7 @@ class LoginPage(QWidget):
         self.password_entry.setMinimumHeight(40)
         container_layout.addWidget(password_label)
         container_layout.addWidget(self.password_entry)
-        
+
         container_layout.addSpacing(20)
 
         # Tombol Login
@@ -78,33 +142,33 @@ class LoginPage(QWidget):
 
         # Atur fokus awal ke input ID
         self.id_entry.setFocus()
-        
+
         # Terapkan styling
         self.apply_style()
-        
+
     def check_login(self):
         """Memeriksa kredensial yang dimasukkan pengguna."""
         user_id = self.id_entry.text()
         password = self.password_entry.text()
-        
+
         # ####################################################################
         # ###                                                              ###
         # ###    GANTI BAGIAN INI DENGAN LOGIKA ID & PASSWORD ANDA         ###
         # ###                                                              ###
         # ####################################################################
-        
+
         # Contoh validasi:
         if user_id == "admin" and password == "12345":
             print("Login berhasil!")
             self.login_successful.emit()  # Kirim sinyal bahwa login berhasil
         else:
-            # Tampilkan pesan error menggunakan QMessageBox dari PyQt6
-            msg_box = QMessageBox(self)
-            msg_box.setIcon(QMessageBox.Icon.Warning)
-            msg_box.setWindowTitle("Login Gagal")
-            msg_box.setText("ID Pengguna atau Password yang Anda masukkan salah.")
-            msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-            msg_box.exec()
+            # Tampilkan pesan error menggunakan custom dialog
+            error_dialog = CustomDialog(
+                self,
+                "Login Gagal",
+                "ID Pengguna atau Password yang Anda masukkan salah."
+            )
+            error_dialog.exec()
 
     def apply_style(self):
         """Menerapkan styling modern menggunakan Qt StyleSheet (mirip CSS)."""
@@ -146,6 +210,7 @@ class LoginPage(QWidget):
                 padding: 0 10px;
                 font-size: 14px;
                 background-color: #FFFFFF;
+                color: #333333;
             }
             QLineEdit:focus {
                 border-color: #E60012; /* merah saat fokus */
@@ -172,9 +237,15 @@ class LoginPage(QWidget):
 
     def closeEvent(self, event):
         """Handle window close event"""
-        reply = QMessageBox.question(self,"Konfirmasi","Apakah anda yakin anda ingin keluar?",QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,QMessageBox.StandardButton.No)
-        if reply == QMessageBox.StandardButton.Yes:
+        confirm_dialog = CustomDialog(
+            self,
+            "Konfirmasi",
+            "Apakah anda yakin anda ingin keluar?",
+            [("Tidak", QDialog.DialogCode.Rejected), ("Ya", QDialog.DialogCode.Accepted)]
+        )
+
+        result = confirm_dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
             event.accept()
         else:
             event.ignore()
-    
