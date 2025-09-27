@@ -6,11 +6,13 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 import sys
 from config import APP_NAME
+from modules.database import db_manager
 
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.init_ui()
+        self.load_settings()
 
     def init_ui(self):
         self.setWindowTitle("Admin Settings")
@@ -100,11 +102,91 @@ class SettingsDialog(QDialog):
         if folder:
             self.save_path_input.setText(folder)
 
+    def load_settings(self):
+        """Load existing settings from database"""
+        try:
+            # Load save path setting
+            save_path = db_manager.get_app_config('image_save_path')
+            if save_path:
+                self.save_path_input.setText(save_path)
+
+            # Load default camera setting
+            default_camera = db_manager.get_app_config('default_camera')
+            if default_camera:
+                index = self.camera_combo.findText(default_camera)
+                if index >= 0:
+                    self.camera_combo.setCurrentIndex(index)
+
+            # Load default printer setting
+            default_printer = db_manager.get_app_config('default_printer')
+            if default_printer:
+                index = self.printer_combo.findText(default_printer)
+                if index >= 0:
+                    self.printer_combo.setCurrentIndex(index)
+        except Exception as e:
+            print(f"Error loading settings: {e}")
+
+    def show_message_box(self, title, message, icon_type):
+        """Show a styled message box with proper text visibility"""
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(message)
+        msg_box.setIcon(icon_type)
+
+        # Apply custom styling for better visibility
+        msg_box.setStyleSheet("""
+            QMessageBox {
+                background-color: #FFFFFF;
+                color: #333333;
+                font-size: 14px;
+            }
+            QMessageBox QLabel {
+                color: #333333;
+                background-color: transparent;
+            }
+            QMessageBox QPushButton {
+                background-color: #E60012;
+                color: #FFFFFF;
+                font-weight: bold;
+                font-size: 12px;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+                min-width: 80px;
+            }
+            QMessageBox QPushButton:hover {
+                background-color: #CC0010;
+            }
+        """)
+
+        msg_box.exec()
+
     def save_settings(self):
-        # Here you would implement saving the settings
-        # For now, just show a confirmation message
-        QMessageBox.information(self, "Settings", "Settings saved successfully!")
-        self.accept()
+        """Save settings to database"""
+        try:
+            # Get values from form
+            save_path = self.save_path_input.text().strip()
+            default_camera = self.camera_combo.currentText()
+            default_printer = self.printer_combo.currentText()
+
+            # Validate required fields
+            if not save_path:
+                self.show_message_box("Validation Error", "Please select a save path for images.", QMessageBox.Icon.Warning)
+                return
+
+            # Save to database
+            success = True
+            success &= db_manager.set_app_config('image_save_path', save_path)
+            success &= db_manager.set_app_config('default_camera', default_camera)
+            success &= db_manager.set_app_config('default_printer', default_printer)
+
+            if success:
+                self.show_message_box("Settings", "Settings saved successfully!", QMessageBox.Icon.Information)
+                self.accept()
+            else:
+                self.show_message_box("Error", "Failed to save some settings. Please try again.", QMessageBox.Icon.Critical)
+        except Exception as e:
+            self.show_message_box("Error", f"An error occurred while saving settings: {str(e)}", QMessageBox.Icon.Critical)
 
     def get_settings_stylesheet(self):
         return """

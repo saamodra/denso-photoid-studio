@@ -8,7 +8,7 @@ The database follows the Entity-Relationship Diagram (ERD) with the following ta
 
 ### Tables
 
-1. **`apps_config`** - Application configuration settings
+1. **`app_configs`** - Application configuration settings
    - `id` (INTEGER, PRIMARY KEY)
    - `name` (TEXT, UNIQUE) - Configuration key
    - `value` (TEXT) - Configuration value
