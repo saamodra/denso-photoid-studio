@@ -34,6 +34,14 @@ UI_SETTINGS = {
     'font_size': 12
 }
 
+# Database settings
+DATABASE_SETTINGS = {
+    'db_path': 'data/photoid_studio.db',
+    'backup_path': 'data/backups',
+    'max_connections': 10,
+    'timeout': 30.0
+}
+
 # File paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(BASE_DIR, 'assets')
@@ -43,10 +51,11 @@ ICONS_DIR = os.path.join(ASSETS_DIR, 'icons')
 TEMP_DIR = os.path.join(BASE_DIR, 'temp')
 CAPTURES_DIR = os.path.join(TEMP_DIR, 'captures')
 PROCESSED_DIR = os.path.join(TEMP_DIR, 'processed')
+DATA_DIR = os.path.join(BASE_DIR, 'data')
 
 # Ensure directories exist
 for directory in [ASSETS_DIR, BACKGROUNDS_DIR, TEMPLATES_DIR, ICONS_DIR,
-                  TEMP_DIR, CAPTURES_DIR, PROCESSED_DIR]:
+                  TEMP_DIR, CAPTURES_DIR, PROCESSED_DIR, DATA_DIR]:
     os.makedirs(directory, exist_ok=True)
 
 # Background templates
