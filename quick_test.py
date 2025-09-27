@@ -68,9 +68,18 @@ def test_main():
     window.show()
     return app.exec()
 
+def test_admin():
+    """Quick test of admin window"""
+    from ui.admin_window import AdminWindow
+
+    app = QApplication(sys.argv)
+    window = AdminWindow()
+    window.show()
+    return app.exec()
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python quick_test.py [processing|print|selection|main]")
+        print("Usage: python quick_test.py [processing|print|selection|main|admin]")
         sys.exit(1)
 
     window_type = sys.argv[1].lower()
@@ -83,6 +92,8 @@ if __name__ == "__main__":
         test_selection()
     elif window_type == 'main':
         test_main()
+    elif window_type == 'admin':
+        test_admin()
     else:
         print(f"Unknown window: {window_type}")
-        print("Available: processing, print, selection, main")
+        print("Available: processing, print, selection, main, admin")
