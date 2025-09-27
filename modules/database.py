@@ -8,6 +8,7 @@ import logging
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Tuple
 from contextlib import contextmanager
+from .auth import auth_manager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -296,6 +297,144 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Failed to backup database: {e}")
             return False
+
+    def authenticate_user(self, npk: str, password: str) -> Optional[Dict[str, Any]]:
+        """
+        Authenticate user with NPK and password
+
+        Args:
+            npk: User's NPK (employee ID)
+            password: Plain text password
+
+        Returns:
+            User data if authentication successful, None otherwise
+        """
+        try:
+            user = self.get_user_by_npk(npk)
+            if not user:
+                logger.warning(f"User not found: {npk}")
+                return None
+
+            # Check if user has a password set
+            if not user.get('password'):
+                logger.warning(f"User {npk} has no password set")
+                return None
+
+            # Verify password
+            if auth_manager.verify_password(password, user['password']):
+                # Update last access time
+                self.update_user(npk, {'last_access': datetime.now()})
+                logger.info(f"User {npk} authenticated successfully")
+                return user
+            else:
+                logger.warning(f"Authentication failed for user: {npk}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Authentication error for user {npk}: {e}")
+            return None
+
+    def create_user_with_password(self, user_data: Dict[str, Any], password: str) -> bool:
+        """
+        Create a new user with encrypted password
+
+        Args:
+            user_data: User information dictionary
+            password: Plain text password to encrypt and store
+
+        Returns:
+            True if user created successfully, False otherwise
+        """
+        try:
+            # Hash the password
+            hashed_password = auth_manager.hash_password(password)
+
+            # Add hashed password to user data
+            user_data['password'] = hashed_password
+
+            # Create the user
+            success = self.create_user(user_data)
+
+            if success:
+                logger.info(f"User {user_data.get('npk')} created with encrypted password")
+            else:
+                logger.error(f"Failed to create user {user_data.get('npk')}")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"Failed to create user with password: {e}")
+            return False
+
+    def update_user_password(self, npk: str, new_password: str) -> bool:
+        """
+        Update user password with encryption
+
+        Args:
+            npk: User's NPK
+            new_password: New plain text password
+
+        Returns:
+            True if password updated successfully, False otherwise
+        """
+        try:
+            # Hash the new password
+            hashed_password = auth_manager.hash_password(new_password)
+
+            # Update user with new hashed password
+            success = self.update_user(npk, {'password': hashed_password})
+
+            if success:
+                logger.info(f"Password updated for user: {npk}")
+            else:
+                logger.error(f"Failed to update password for user: {npk}")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"Failed to update password for user {npk}: {e}")
+            return False
+
+    def reset_user_password(self, npk: str, new_password: str) -> bool:
+        """
+        Reset user password (admin function)
+
+        Args:
+            npk: User's NPK
+            new_password: New plain text password
+
+        Returns:
+            True if password reset successfully, False otherwise
+        """
+        return self.update_user_password(npk, new_password)
+
+    def get_users_by_role(self, role: str) -> List[Dict[str, Any]]:
+        """
+        Get all users with a specific role
+
+        Args:
+            role: User role to filter by
+
+        Returns:
+            List of user dictionaries
+        """
+        return self.execute_query("SELECT * FROM users WHERE role = ? ORDER BY name", (role,))
+
+    def search_users(self, search_term: str) -> List[Dict[str, Any]]:
+        """
+        Search users by name or NPK
+
+        Args:
+            search_term: Search term to match against name or NPK
+
+        Returns:
+            List of matching user dictionaries
+        """
+        search_pattern = f"%{search_term}%"
+        return self.execute_query(
+            "SELECT * FROM users WHERE name LIKE ? OR npk LIKE ? ORDER BY name",
+            (search_pattern, search_pattern)
+        )
 
 # Global database manager instance
 db_manager = DatabaseManager()
