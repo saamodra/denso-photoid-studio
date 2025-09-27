@@ -30,6 +30,7 @@ class IDCardPhotoApp:
 
         # Application state
         self.current_window = None
+        self.current_user = None
         self.captured_photos = []
         self.selected_photo = None
         self.processed_image = None
@@ -102,7 +103,7 @@ class IDCardPhotoApp:
             print(f"❌ Application error: {e}")
             self.show_error_dialog("Application Error", str(e))
             return 1
-    
+
     def show_login_window(self):
         """Show login window"""
         try:
@@ -146,8 +147,10 @@ class IDCardPhotoApp:
             self.show_error_dialog("Camera Error",
                                  f"Failed to initialize camera:\n{str(e)}\n\n"
                                  "Please ensure your camera is connected and not in use by another application.")
-    
-    def login_success(self):
+
+    def login_success(self, user_data):
+        """Handle successful login with user data"""
+        self.current_user = user_data
         self.current_window.hide()
         self.show_role_selection_window()
 
@@ -197,7 +200,7 @@ class IDCardPhotoApp:
                 self.main_window.activateWindow()  # Activate window
                 self.main_window.setup_camera()  # Restart camera
             else:
-                
+
                 # Create new main window
                 self.main_window = MainWindow()
                 self.main_window.photos_captured.connect(self.on_photos_captured)

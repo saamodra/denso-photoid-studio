@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QGridLayout,
                              QLabel, QLineEdit, QPushButton, QMessageBox, QFrame, QDialog, QHBoxLayout)
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
+from modules.database import db_manager
 
 class CustomDialog(QDialog):
     """Custom dialog with consistent styling"""
@@ -73,10 +74,11 @@ class LoginPage(QWidget):
     Halaman login yang dibuat menggunakan PyQt6.
     Mengirimkan sinyal 'login_successful' ketika otentikasi berhasil.
     """
-    login_successful = pyqtSignal()
+    login_successful = pyqtSignal(dict)  # Emit user data on successful login
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.current_user = None
         self.init_ui()
 
     def init_ui(self):
@@ -147,28 +149,69 @@ class LoginPage(QWidget):
         self.apply_style()
 
     def check_login(self):
-        """Memeriksa kredensial yang dimasukkan pengguna."""
-        user_id = self.id_entry.text()
+        """Memeriksa kredensial yang dimasukkan pengguna menggunakan database."""
+        user_id = self.id_entry.text().strip()
         password = self.password_entry.text()
 
-        # ####################################################################
-        # ###                                                              ###
-        # ###    GANTI BAGIAN INI DENGAN LOGIKA ID & PASSWORD ANDA         ###
-        # ###                                                              ###
-        # ####################################################################
-
-        # Contoh validasi:
-        if user_id == "admin" and password == "12345":
-            print("Login berhasil!")
-            self.login_successful.emit()  # Kirim sinyal bahwa login berhasil
-        else:
-            # Tampilkan pesan error menggunakan custom dialog
+        # Validasi input
+        if not user_id or not password:
             error_dialog = CustomDialog(
                 self,
-                "Login Gagal",
-                "ID Pengguna atau Password yang Anda masukkan salah."
+                "Input Tidak Valid",
+                "ID Pengguna dan Password harus diisi."
             )
             error_dialog.exec()
+            return
+
+        try:
+            # Authenticate user using database
+            user = db_manager.authenticate_user(user_id, password)
+
+            if user:
+                # Store current user data
+                self.current_user = user
+
+                # Clear password field for security
+                self.password_entry.clear()
+
+                # Show success message
+                success_dialog = CustomDialog(
+                    self,
+                    "Login Berhasil",
+                    f"Selamat datang, {user.get('name', 'User')}!"
+                )
+                success_dialog.exec()
+
+                # Emit signal with user data
+                self.login_successful.emit(user)
+            else:
+                # Show error message
+                error_dialog = CustomDialog(
+                    self,
+                    "Login Gagal",
+                    "ID Pengguna atau Password yang Anda masukkan salah.\nPastikan Anda telah terdaftar dalam sistem."
+                )
+                error_dialog.exec()
+
+        except Exception as e:
+            # Show error message for database/system errors
+            error_dialog = CustomDialog(
+                self,
+                "Error Sistem",
+                f"Terjadi kesalahan saat melakukan login:\n{str(e)}"
+            )
+            error_dialog.exec()
+
+    def get_current_user(self):
+        """Get current logged in user data"""
+        return self.current_user
+
+    def logout(self):
+        """Logout current user"""
+        self.current_user = None
+        self.id_entry.clear()
+        self.password_entry.clear()
+        self.id_entry.setFocus()
 
     def apply_style(self):
         """Menerapkan styling modern menggunakan Qt StyleSheet (mirip CSS)."""
