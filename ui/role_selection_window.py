@@ -6,6 +6,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt, pyqtSignal
 import sys
 from config import APP_NAME, APP_VERSION, UI_SETTINGS
+from ui.admin_window import AdminWindow
 
 class RoleSelectionWindow(QWidget):
     logout_successful = pyqtSignal()
@@ -14,6 +15,7 @@ class RoleSelectionWindow(QWidget):
 
     def __init__(self):
         super().__init__()
+        self.admin_window = None
         self.init_ui()
 
     def init_ui(self):
@@ -65,14 +67,26 @@ class RoleSelectionWindow(QWidget):
         self.setLayout(main_layout)
 
     def handle_logout(self):
-        self.close
+        self.close()
         self.logout_successful.emit()
 
     def handle_user_btn_click(self):
         self.user_role_selected.emit()
 
     def handle_admin_btn_click(self):
-        self.admin_role_selected.emit()
+        self.hide()  # Hide the role selection window
+        self.show_admin_window()
+
+    def show_admin_window(self):
+        if self.admin_window is None:
+            self.admin_window = AdminWindow()
+            self.admin_window.logout_requested.connect(self.handle_admin_logout)
+        self.admin_window.showFullScreen()
+
+    def handle_admin_logout(self):
+        if self.admin_window:
+            self.admin_window.hide()
+        self.show()  # Show the role selection window again
 
     def get_stylesheet(self):
         return """
@@ -112,4 +126,3 @@ class RoleSelectionWindow(QWidget):
             background-color: #333333;
         }
         """
-
