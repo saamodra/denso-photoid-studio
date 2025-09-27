@@ -74,8 +74,7 @@ class RoleSelectionWindow(QWidget):
         self.user_role_selected.emit()
 
     def handle_admin_btn_click(self):
-        self.hide()  # Hide the role selection window
-        self.show_admin_window()
+        self.admin_role_selected.emit()
 
     def show_admin_window(self):
         if self.admin_window is None:

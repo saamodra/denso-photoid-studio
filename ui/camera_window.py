@@ -4,7 +4,7 @@ Camera preview and capture functionality
 """
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                             QLabel, QPushButton, QComboBox, QGridLayout,
-                            QFrame, QProgressBar, QSpinBox, QGroupBox)
+                            QFrame, QProgressBar, QSpinBox, QGroupBox, QDialog)
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread
 from PyQt6.QtGui import QPixmap, QFont, QPalette
 import cv2
@@ -12,7 +12,89 @@ import numpy as np
 import os
 from modules.camera_manager import CameraManager, CaptureTimer
 from modules.database import db_manager
+from modules.session_manager import session_manager
 from config import UI_SETTINGS, CAMERA_SETTINGS
+
+
+class CustomStyledDialog(QDialog):
+    """Custom dialog with consistent styling matching the logout confirmation"""
+
+    def __init__(self, parent=None, title="", message="", buttons=None, icon_type="info"):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setModal(True)
+        self.setFixedSize(400, 200)
+
+        # Main layout
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+
+        # Message label
+        self.message_label = QLabel(message)
+        self.message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.message_label.setWordWrap(True)
+        layout.addWidget(self.message_label)
+
+        # Button layout
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
+
+        if buttons is None:
+            buttons = [("OK", QDialog.DialogCode.Accepted)]
+
+        self.buttons = []
+        for text, role in buttons:
+            btn = QPushButton(text)
+            btn.clicked.connect(lambda checked, r=role: self.done(r))
+            button_layout.addWidget(btn)
+            self.buttons.append(btn)
+
+        layout.addLayout(button_layout)
+
+        # Apply consistent styling
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #FFFFFF;
+                color: #333333;
+            }
+            QLabel {
+                background-color: #FFFFFF;
+                color: #333333;
+                font-size: 14px;
+                padding: 10px;
+            }
+            QPushButton {
+                background-color: #E60012;
+                color: #FFFFFF;
+                font-weight: bold;
+                font-size: 14px;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 20px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #CC0010;
+            }
+            QPushButton:pressed {
+                background-color: #99000C;
+            }
+            QPushButton#cancelButton {
+                background-color: #6c757d;
+            }
+            QPushButton#cancelButton:hover {
+                background-color: #5a6268;
+            }
+            QPushButton#cancelButton:pressed {
+                background-color: #495057;
+            }
+        """)
+
+    def set_cancel_button(self, button_index=0):
+        """Set a button as cancel button for different styling"""
+        if 0 <= button_index < len(self.buttons):
+            self.buttons[button_index].setObjectName("cancelButton")
 
 
 class PhotoCaptureThread(QThread):
@@ -74,6 +156,7 @@ class MainWindow(QMainWindow):
     """Main application window with camera preview and capture"""
 
     photos_captured = pyqtSignal(list)  # Signal emitted when photos are captured
+    logout_requested = pyqtSignal()  # Signal emitted when logout is requested
 
     def __init__(self):
         super().__init__()
@@ -81,6 +164,7 @@ class MainWindow(QMainWindow):
         self.capture_timer = None
         self.photo_capture_thread = None
         self.countdown_active = False
+        self.current_user = None
         self.init_ui()
 
         # Force window to be visible
@@ -380,6 +464,10 @@ class MainWindow(QMainWindow):
         capture_group = self.create_capture_settings_group()
         layout.addWidget(capture_group)
 
+        # User info section
+        user_group = self.create_user_info_group()
+        layout.addWidget(user_group)
+
         # Status section
         status_group = self.create_status_group()
         layout.addWidget(status_group)
@@ -388,6 +476,104 @@ class MainWindow(QMainWindow):
         layout.addStretch()
 
         return control_frame
+
+    def create_user_info_group(self):
+        """Create user information display group"""
+        group = QGroupBox("Current User")
+        layout = QVBoxLayout(group)
+
+        # User info labels
+        self.user_name_label = QLabel("Not logged in")
+        self.user_npk_label = QLabel("")
+        self.user_role_label = QLabel("")
+        self.user_department_label = QLabel("")
+
+        # Style the labels
+        user_style = """
+            QLabel {
+                font-size: 12px;
+                color: #2c3e50;
+                margin: 2px 0px;
+            }
+        """
+
+        self.user_name_label.setStyleSheet(user_style + """
+            QLabel {
+                font-size: 14px;
+                font-weight: bold;
+                color: #E60012;
+            }
+        """)
+
+        self.user_npk_label.setStyleSheet(user_style)
+        self.user_role_label.setStyleSheet(user_style)
+        self.user_department_label.setStyleSheet(user_style)
+
+        layout.addWidget(self.user_name_label)
+        layout.addWidget(self.user_npk_label)
+        layout.addWidget(self.user_role_label)
+        layout.addWidget(self.user_department_label)
+
+        # Logout button
+        logout_btn = QPushButton("Logout")
+        logout_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            }
+        """)
+        logout_btn.clicked.connect(self.logout)
+        layout.addWidget(logout_btn)
+
+        return group
+
+    def set_session_info(self, user_data):
+        """Set user session information"""
+        self.current_user = user_data
+        self.update_user_info()
+
+    def update_user_info(self):
+        """Update user information display"""
+        if self.current_user:
+            self.user_name_label.setText(f"👤 {self.current_user.get('name', 'Unknown')}")
+            self.user_npk_label.setText(f"NPK: {self.current_user.get('npk', 'N/A')}")
+            self.user_role_label.setText(f"Role: {self.current_user.get('role', 'N/A').title()}")
+            self.user_department_label.setText(f"Dept: {self.current_user.get('department_name', 'N/A')}")
+        else:
+            # Try to get from session manager
+            current_user = session_manager.get_current_user()
+            if current_user:
+                self.current_user = current_user
+                self.user_name_label.setText(f"👤 {current_user.get('name', 'Unknown')}")
+                self.user_npk_label.setText(f"NPK: {current_user.get('npk', 'N/A')}")
+                self.user_role_label.setText(f"Role: {current_user.get('role', 'N/A').title()}")
+                self.user_department_label.setText(f"Dept: {current_user.get('department_name', 'N/A')}")
+            else:
+                self.user_name_label.setText("Not logged in")
+                self.user_npk_label.setText("")
+                self.user_role_label.setText("")
+                self.user_department_label.setText("")
+
+    def logout(self):
+        """Handle logout request"""
+        dialog = CustomStyledDialog(
+            self,
+            'Logout Confirmation',
+            'Are you sure you want to logout?',
+            [("No", QDialog.DialogCode.Rejected), ("Yes", QDialog.DialogCode.Accepted)]
+        )
+        dialog.set_cancel_button(0)  # "No" button as cancel
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # Emit signal to main app to handle logout
+            self.logout_requested.emit()
 
     def create_camera_selection_group(self):
         """Create camera selection group - removed, camera is auto-selected from database"""

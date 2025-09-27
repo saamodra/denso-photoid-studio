@@ -42,7 +42,7 @@ class CustomDialog(QDialog):
 
         # Apply styling
         self.setStyleSheet("""
-            CustomDialog {
+            QDialog {
                 background-color: #FFFFFF;
                 color: #333333;
             }
@@ -50,6 +50,7 @@ class CustomDialog(QDialog):
                 background-color: #FFFFFF;
                 color: #333333;
                 font-size: 14px;
+                padding: 10px;
             }
             QPushButton {
                 background-color: #E60012;
@@ -58,7 +59,7 @@ class CustomDialog(QDialog):
                 font-size: 14px;
                 border: none;
                 border-radius: 8px;
-                padding: 8px 16px;
+                padding: 10px 20px;
                 min-width: 80px;
             }
             QPushButton:hover {
@@ -66,6 +67,15 @@ class CustomDialog(QDialog):
             }
             QPushButton:pressed {
                 background-color: #99000C;
+            }
+            QPushButton#cancelButton {
+                background-color: #6c757d;
+            }
+            QPushButton#cancelButton:hover {
+                background-color: #5a6268;
+            }
+            QPushButton#cancelButton:pressed {
+                background-color: #495057;
             }
         """)
 
@@ -174,14 +184,6 @@ class LoginPage(QWidget):
                 # Clear password field for security
                 self.password_entry.clear()
 
-                # Show success message
-                success_dialog = CustomDialog(
-                    self,
-                    "Login Berhasil",
-                    f"Selamat datang, {user.get('name', 'User')}!"
-                )
-                success_dialog.exec()
-
                 # Emit signal with user data
                 self.login_successful.emit(user)
             else:
@@ -286,6 +288,12 @@ class LoginPage(QWidget):
             "Apakah anda yakin anda ingin keluar?",
             [("Tidak", QDialog.DialogCode.Rejected), ("Ya", QDialog.DialogCode.Accepted)]
         )
+
+        # Set cancel button styling
+        if len(confirm_dialog.buttons) >= 1:
+            confirm_dialog.buttons[0].setObjectName("cancelButton")  # "Tidak" button
+        if len(confirm_dialog.buttons) >= 2:
+            confirm_dialog.buttons[1].setObjectName("confirmButton")  # "Ya" button
 
         result = confirm_dialog.exec()
         if result == QDialog.DialogCode.Accepted:

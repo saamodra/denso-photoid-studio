@@ -10,6 +10,87 @@ from modules.database import db_manager
 from modules.camera_manager import CameraManager
 from modules.print_manager import PrintManager
 
+
+class CustomStyledDialog(QDialog):
+    """Custom dialog with consistent styling matching the logout confirmation"""
+
+    def __init__(self, parent=None, title="", message="", buttons=None, icon_type="info"):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setModal(True)
+        self.setFixedSize(400, 200)
+
+        # Main layout
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+
+        # Message label
+        self.message_label = QLabel(message)
+        self.message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.message_label.setWordWrap(True)
+        layout.addWidget(self.message_label)
+
+        # Button layout
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
+
+        if buttons is None:
+            buttons = [("OK", QDialog.DialogCode.Accepted)]
+
+        self.buttons = []
+        for text, role in buttons:
+            btn = QPushButton(text)
+            btn.clicked.connect(lambda checked, r=role: self.done(r))
+            button_layout.addWidget(btn)
+            self.buttons.append(btn)
+
+        layout.addLayout(button_layout)
+
+        # Apply consistent styling
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #FFFFFF;
+                color: #333333;
+            }
+            QLabel {
+                background-color: #FFFFFF;
+                color: #333333;
+                font-size: 14px;
+                padding: 10px;
+            }
+            QPushButton {
+                background-color: #E60012;
+                color: #FFFFFF;
+                font-weight: bold;
+                font-size: 14px;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 20px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #CC0010;
+            }
+            QPushButton:pressed {
+                background-color: #99000C;
+            }
+            QPushButton#cancelButton {
+                background-color: #6c757d;
+            }
+            QPushButton#cancelButton:hover {
+                background-color: #5a6268;
+            }
+            QPushButton#cancelButton:pressed {
+                background-color: #495057;
+            }
+        """)
+
+    def set_cancel_button(self, button_index=0):
+        """Set a button as cancel button for different styling"""
+        if 0 <= button_index < len(self.buttons):
+            self.buttons[button_index].setObjectName("cancelButton")
+
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -292,38 +373,8 @@ class SettingsDialog(QDialog):
 
     def show_message_box(self, title, message, icon_type):
         """Show a styled message box with proper text visibility"""
-        msg_box = QMessageBox(self)
-        msg_box.setWindowTitle(title)
-        msg_box.setText(message)
-        msg_box.setIcon(icon_type)
-
-        # Apply custom styling for better visibility
-        msg_box.setStyleSheet("""
-            QMessageBox {
-                background-color: #FFFFFF;
-                color: #333333;
-                font-size: 14px;
-            }
-            QMessageBox QLabel {
-                color: #333333;
-                background-color: transparent;
-            }
-            QMessageBox QPushButton {
-                background-color: #E60012;
-                color: #FFFFFF;
-                font-weight: bold;
-                font-size: 12px;
-                border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
-                min-width: 80px;
-            }
-            QMessageBox QPushButton:hover {
-                background-color: #CC0010;
-            }
-        """)
-
-        msg_box.exec()
+        dialog = CustomStyledDialog(self, title, message)
+        dialog.exec()
 
     def save_settings(self):
         """Save settings to database"""
@@ -593,10 +644,12 @@ class AdminWindow(QWidget):
 
     # Placeholder methods for button functions
     def show_employee_list(self):
-        QMessageBox.information(self, "Feature", "Show Employee List feature will be implemented here.")
+        dialog = CustomStyledDialog(self, "Feature", "Show Employee List feature will be implemented here.")
+        dialog.exec()
 
     def print_id_card(self):
-        QMessageBox.information(self, "Feature", "Print ID Card feature will be implemented here.")
+        dialog = CustomStyledDialog(self, "Feature", "Print ID Card feature will be implemented here.")
+        dialog.exec()
 
     def get_stylesheet(self):
         return """
