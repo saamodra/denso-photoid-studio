@@ -35,6 +35,20 @@ temp/processed/*
 !temp/captures/.gitkeep
 !temp/processed/.gitkeep
 
+# Database files
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Database backups
+backups/
+*.backup
+*.bak
+
 # IDE
 .vscode/
 .idea/
@@ -59,6 +73,27 @@ Desktop.ini
 *.log
 backup/
 screenshots/
+
+# Configuration files with sensitive data
+.env
+config.local.py
+secrets.py
+
+# Test outputs and reports
+test_output/
+coverage/
+htmlcov/
+.pytest_cache/
+.coverage
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # Optional: Keep some temp directories
 !temp/
