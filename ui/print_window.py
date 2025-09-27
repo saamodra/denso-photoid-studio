@@ -4,17 +4,18 @@ Interface for print preview and printing
 """
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                             QLabel, QPushButton, QGridLayout, QFrame,
-                            QComboBox, QSpinBox, QGroupBox, QRadioButton,
-                            QButtonGroup, QProgressBar, QCheckBox)
+                            QSpinBox, QGroupBox, QMessageBox,
+                            QProgressBar)
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
-from PyQt6.QtGui import QPixmap, QFont
+from PyQt6.QtGui import QPixmap
 from PIL import Image
 import os
 import tempfile
+from datetime import datetime
 from modules.print_manager import PrintManager
 from modules.database import db_manager
-# from modules.image_processor import ImageProcessor  # Not needed for direct implementation
-from config import UI_SETTINGS, PRINT_SETTINGS
+from modules.session_manager import session_manager
+from config import PRINT_SETTINGS
 
 
 class PrintThread(QThread):
@@ -73,9 +74,10 @@ class PrintWindow(QMainWindow):
     print_complete = pyqtSignal(bool)  # Success/failure
     back_requested = pyqtSignal()
 
-    def __init__(self, processed_image):
+    def __init__(self, processed_image, original_image_path=None):
         super().__init__()
         self.processed_image = processed_image
+        self.original_image_path = original_image_path
         self.print_manager = PrintManager()
         self.image_processor = None  # Not needed for direct implementation
         self.print_thread = None
@@ -585,26 +587,6 @@ class PrintWindow(QMainWindow):
         self.auto_select_printer_from_database()
         self.update_printer_info_display()
 
-    def save_id_card(self):
-        """Save ID card to file"""
-        try:
-            if not self.id_card_image:
-                self.status_label.setText("No ID card to save")
-                return
-
-            # Save processed image directly
-            from config import PROCESSED_DIR
-            save_path = os.path.join(PROCESSED_DIR, "id_card_final.png")
-            os.makedirs(PROCESSED_DIR, exist_ok=True)
-
-            # Save PIL Image
-            self.id_card_image.save(save_path, format='PNG', quality=95)
-
-            self.status_label.setText(f"ID card saved to: {save_path}")
-
-        except Exception as e:
-            self.status_label.setText(f"Save error: {str(e)}")
-
     def print_id_card(self):
         """Print ID card"""
         if not self.id_card_image:
@@ -741,6 +723,116 @@ class PrintWindow(QMainWindow):
                 border-radius: 3px;
             }
         """)
+
+    def generate_unique_filename(self, user_npk, file_type, extension="png"):
+        """
+        Generate unique filename for user photos and ID cards
+
+        Args:
+            user_npk: User's NPK (employee ID)
+            file_type: Type of file ('photo' or 'card')
+            extension: File extension (default: 'png')
+
+        Returns:
+            Unique filename string
+        """
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # Include milliseconds
+        return f"{user_npk}_{file_type}_{timestamp}.{extension}"
+
+    def save_id_card(self):
+        """Save ID card to database and files"""
+        try:
+            if not self.id_card_image:
+                self.status_label.setText("No ID card to save")
+                return
+
+            # Get current user
+            current_user = session_manager.get_current_user()
+            if not current_user:
+                self.status_label.setText("No user logged in")
+                return
+
+            # Get image save path from database configuration
+            image_save_path = db_manager.get_app_config('image_save_path')
+            if not image_save_path:
+                self.show_save_error("Image save path not configured. Please contact administrator.")
+                return
+
+            # Check if the configured path exists
+            if not os.path.exists(image_save_path):
+                self.show_save_error(f"Image save directory does not exist:\n{image_save_path}\n\nPlease contact administrator to create the directory.")
+                return
+
+            user_npk = current_user['npk']
+            current_time = datetime.now()
+
+            # Generate unique filenames
+            photo_filename = self.generate_unique_filename(user_npk, "photo")
+            card_filename = self.generate_unique_filename(user_npk, "card")
+
+            # Create subdirectories within the configured path
+            original_dir = os.path.join(image_save_path, "original")
+            card_dir = os.path.join(image_save_path, "card")
+
+            # Create directories if they don't exist
+            os.makedirs(original_dir, exist_ok=True)
+            os.makedirs(card_dir, exist_ok=True)
+
+            # Define file paths
+            original_photo_path = os.path.join(original_dir, photo_filename)
+            card_photo_path = os.path.join(card_dir, card_filename)
+
+            # Save the ID card image
+            self.id_card_image.save(card_photo_path, format='PNG', quality=95)
+
+            # Save the original image if available, otherwise save the processed image
+            if self.original_image_path and os.path.exists(self.original_image_path):
+                # Load and save the actual original image
+                original_image = Image.open(self.original_image_path)
+                original_image.save(original_photo_path, format='PNG', quality=95)
+            else:
+                # Fallback: save the processed image as original (for backward compatibility)
+                self.id_card_image.save(original_photo_path, format='PNG', quality=95)
+
+            # Update user record in database
+            update_data = {
+                'last_take_photo': current_time,
+                'photo_filename': photo_filename,
+                'card_filename': card_filename
+            }
+
+            success = db_manager.update_user(user_npk, update_data)
+            if not success:
+                self.status_label.setText("Failed to update user database")
+                return
+
+            # Add photo history record
+            history_success = db_manager.add_photo_history(user_npk, current_time)
+            if not history_success:
+                self.status_label.setText("Failed to add photo history")
+                return
+
+            # Update session manager with new photo info
+            session_manager.update_user_photo_info(photo_filename, card_filename)
+
+            self.status_label.setText(f"ID card saved successfully!\nPhoto: {photo_filename}\nCard: {card_filename}")
+
+        except Exception as e:
+            self.status_label.setText(f"Save error: {str(e)}")
+            print(f"Error saving ID card: {e}")
+
+    def show_save_error(self, message):
+        """Show error dialog for save failures"""
+        msg_box = QMessageBox(self)
+        msg_box.setIcon(QMessageBox.Icon.Critical)
+        msg_box.setWindowTitle("Save Failed")
+        msg_box.setText("Failed to save ID card")
+        msg_box.setDetailedText(message)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg_box.exec()
+
+        # Also update status label
+        self.status_label.setText("Save failed - see error dialog")
 
     def get_id_card_image(self):
         """Get the final ID card image"""
