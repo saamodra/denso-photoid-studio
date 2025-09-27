@@ -12,6 +12,7 @@ from PIL import Image
 import os
 import tempfile
 from modules.print_manager import PrintManager
+from modules.database import db_manager
 # from modules.image_processor import ImageProcessor  # Not needed for direct implementation
 from config import UI_SETTINGS, PRINT_SETTINGS
 
@@ -238,21 +239,44 @@ class PrintWindow(QMainWindow):
         return frame
 
     def create_printer_group(self):
-        """Create printer selection group - compact"""
+        """Create printer information group - readonly"""
         group = QGroupBox("Printer")
         layout = QVBoxLayout(group)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(5)
 
-        # Printer dropdown
-        self.printer_combo = QComboBox()
-        self.printer_combo.setMaximumHeight(30)
-        layout.addWidget(self.printer_combo)
+        # Printer info display (readonly)
+        self.printer_info_label = QLabel("Loading printer information...")
+        self.printer_info_label.setStyleSheet("""
+            QLabel {
+                color: #2c3e50;
+                font-weight: bold;
+                font-size: 11px;
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 8px;
+                min-height: 20px;
+            }
+        """)
+        layout.addWidget(self.printer_info_label)
 
-        # Printer status
-        self.printer_status = QLabel("Status: Checking...")
-        self.printer_status.setStyleSheet("QLabel { font-size: 9px; color: #2c3e50; font-weight: bold; }")
-        layout.addWidget(self.printer_status)
+        # Printer error label
+        self.printer_error_label = QLabel("")
+        self.printer_error_label.setStyleSheet("""
+            QLabel {
+                color: #DC3545;
+                font-weight: bold;
+                font-size: 10px;
+                background-color: #F8D7DA;
+                border: 1px solid #F5C6CB;
+                border-radius: 4px;
+                padding: 4px;
+                margin-top: 2px;
+            }
+        """)
+        self.printer_error_label.hide()
+        layout.addWidget(self.printer_error_label)
 
         return group
 
@@ -451,24 +475,115 @@ class PrintWindow(QMainWindow):
     def load_print_settings(self):
         """Load print settings and populate UI"""
         # Load printers
-        self.refresh_printers()
+        self.print_manager.available_printers = self.print_manager.get_system_printers()
+
+        # Auto-select printer from database
+        self.auto_select_printer_from_database()
+
+        # Update printer info display
+        self.update_printer_info_display()
 
         # Set default values from config
         self.copies_spin.setValue(1)
 
-    def refresh_printers(self):
-        """Refresh printer list"""
-        self.printer_combo.clear()
+    def auto_select_printer_from_database(self):
+        """Auto-select printer from database configuration"""
+        try:
+            default_printer = db_manager.get_app_config('default_printer')
+            if not default_printer:
+                self.printer_error_label.setText("⚠️ No printer configured. Please contact admin to set up printer.")
+                self.printer_error_label.show()
+                return False
 
-        printers = self.print_manager.refresh_printers()
+            # Check if the saved printer is still available
+            printers = self.print_manager.get_available_printers()
+            printer_found = False
 
-        if printers:
             for printer in printers:
-                self.printer_combo.addItem(printer['name'])
-            self.printer_status.setText(f"Status: {len(printers)} printer(s) found")
-        else:
-            self.printer_combo.addItem("No printers found")
-            self.printer_status.setText("Status: No printers available")
+                if default_printer.lower() in printer['name'].lower():
+                    printer_found = True
+                    break
+
+            if not printer_found:
+                self.printer_error_label.setText(f"⚠️ Configured printer '{default_printer}' is not available. Please contact admin to update printer settings.")
+                self.printer_error_label.show()
+                return False
+            else:
+                self.printer_error_label.hide()
+                return True
+
+        except Exception as e:
+            print(f"Error auto-selecting printer from database: {e}")
+            self.printer_error_label.setText(f"Error loading printer configuration: {str(e)}")
+            self.printer_error_label.show()
+            return False
+
+    def update_printer_info_display(self):
+        """Update printer information display"""
+        try:
+            default_printer = db_manager.get_app_config('default_printer')
+            printers = self.print_manager.get_available_printers()
+
+            if not default_printer:
+                self.printer_info_label.setText("No printer configured\nContact admin to set up printer")
+                return
+
+            # Find the configured printer
+            printer_found = False
+            for printer in printers:
+                if default_printer.lower() in printer['name'].lower():
+                    self.printer_info_label.setText(f"Configured Printer:\n{printer['name']}\nStatus: {printer['status']}")
+                    printer_found = True
+                    break
+
+            if not printer_found:
+                self.printer_info_label.setText(f"Configured Printer:\n{default_printer}\n(Not Available)")
+
+        except Exception as e:
+            print(f"Error updating printer info display: {e}")
+            self.printer_info_label.setText("Error loading printer information")
+
+    def validate_printer_from_database(self):
+        """Validate if the printer from database is still available"""
+        try:
+            default_printer = db_manager.get_app_config('default_printer')
+            if not default_printer:
+                self.printer_error_label.hide()
+                return
+
+            # Check if the saved printer is still available
+            printers = self.print_manager.get_available_printers()
+            printer_found = False
+
+            for printer in printers:
+                if default_printer.lower() in printer['name'].lower():
+                    printer_found = True
+                    break
+
+            if not printer_found:
+                # Printer not found, show error
+                self.printer_error_label.setText(f"⚠️ Configured printer '{default_printer}' is not available. Please contact admin to update printer settings.")
+                self.printer_error_label.show()
+            else:
+                # Printer is available, hide error
+                self.printer_error_label.hide()
+
+        except Exception as e:
+            print(f"Error validating printer from database: {e}")
+            self.printer_error_label.setText(f"Error validating printer: {str(e)}")
+            self.printer_error_label.show()
+
+    def refresh_printers(self):
+        """Refresh printer detection and re-validate database printer"""
+        # Force printer re-detection
+        self.print_manager.available_printers = self.print_manager.get_system_printers()
+        printers = self.print_manager.get_available_printers()
+
+        print(f"UI: Refreshing printers, found {len(printers)}")
+
+        # Re-validate printer from database
+        self.auto_select_printer_from_database()
+        self.update_printer_info_display()
 
     def save_id_card(self):
         """Save ID card to file"""
@@ -499,10 +614,15 @@ class PrintWindow(QMainWindow):
         if self.print_thread and self.print_thread.isRunning():
             return
 
-        # Get settings
-        printer_name = self.printer_combo.currentText()
-        if printer_name == "No printers found":
-            self.status_label.setText("No printer selected")
+        # Get printer from database
+        printer_name = db_manager.get_app_config('default_printer')
+        if not printer_name:
+            self.status_label.setText("No printer configured")
+            return
+
+        # Validate printer is available
+        if not self.auto_select_printer_from_database():
+            self.status_label.setText("Configured printer not available")
             return
 
         copies = self.copies_spin.value()
