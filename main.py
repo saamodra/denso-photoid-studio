@@ -506,7 +506,7 @@ class IDCardPhotoApp:
             if self.print_window:
                 self.print_window.close()
 
-            self.print_window = PrintWindow(self.processed_image)
+            self.print_window = PrintWindow(self.processed_image, self.selected_photo)
             self.print_window.print_complete.connect(self.on_print_complete)
             self.print_window.back_requested.connect(self.show_processing_window)
             self.print_window.show()
