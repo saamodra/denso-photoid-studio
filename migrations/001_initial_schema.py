@@ -12,15 +12,15 @@ def upgrade(conn):
 
     logger.info("Creating initial database schema...")
 
-    # Create apps_config table
+    # Create app_configs table
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS apps_config (
+        CREATE TABLE IF NOT EXISTS app_configs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
             value TEXT
         )
     """)
-    logger.info("Created apps_config table")
+    logger.info("Created app_configs table")
 
     # Create users table
     cursor.execute("""
@@ -88,7 +88,7 @@ def upgrade(conn):
 
     for name, value in default_configs:
         cursor.execute("""
-            INSERT OR IGNORE INTO apps_config (name, value)
+            INSERT OR IGNORE INTO app_configs (name, value)
             VALUES (?, ?)
         """, (name, value))
 
@@ -107,7 +107,7 @@ def downgrade(conn):
     cursor.execute("DROP TABLE IF EXISTS request_histories")
     cursor.execute("DROP TABLE IF EXISTS photo_histories")
     cursor.execute("DROP TABLE IF EXISTS users")
-    cursor.execute("DROP TABLE IF EXISTS apps_config")
+    cursor.execute("DROP TABLE IF EXISTS app_configs")
 
     conn.commit()
     logger.info("Initial schema rollback completed")

@@ -53,7 +53,7 @@ class DatabaseManager:
                 cursor = conn.cursor()
                 cursor.execute("""
                     SELECT name FROM sqlite_master
-                    WHERE type='table' AND name IN ('apps_config', 'users', 'photo_histories', 'request_histories')
+                    WHERE type='table' AND name IN ('app_configs', 'users', 'photo_histories', 'request_histories')
                 """)
                 existing_tables = [row[0] for row in cursor.fetchall()]
 
@@ -71,9 +71,9 @@ class DatabaseManager:
         """Create all database tables"""
         cursor = conn.cursor()
 
-        # Create apps_config table
+        # Create app_configs table
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS apps_config (
+            CREATE TABLE IF NOT EXISTS app_configs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
                 value TEXT
@@ -270,14 +270,14 @@ class DatabaseManager:
 
     def get_app_config(self, name: str) -> Optional[str]:
         """Get application configuration value"""
-        results = self.execute_query("SELECT value FROM apps_config WHERE name = ?", (name,))
+        results = self.execute_query("SELECT value FROM app_configs WHERE name = ?", (name,))
         return results[0]['value'] if results else None
 
     def set_app_config(self, name: str, value: str) -> bool:
         """Set application configuration value"""
         try:
             query = """
-                INSERT OR REPLACE INTO apps_config (name, value)
+                INSERT OR REPLACE INTO app_configs (name, value)
                 VALUES (?, ?)
             """
             self.execute_update(query, (name, value))
