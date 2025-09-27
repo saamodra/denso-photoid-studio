@@ -1,18 +1,24 @@
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QPushButton, QLabel, QVBoxLayout,
     QHBoxLayout, QGridLayout, QFrame, QDialog,
-    QLineEdit, QComboBox, QFileDialog, QMessageBox
+    QLineEdit, QComboBox, QSpinBox, QFileDialog, QMessageBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 import sys
 from config import APP_NAME
 from modules.database import db_manager
+from modules.camera_manager import CameraManager
+from modules.print_manager import PrintManager
 
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
+        # Initialize managers for device detection
+        self.camera_manager = CameraManager()
+        self.print_manager = PrintManager()
         self.init_ui()
         self.load_settings()
+        self.load_devices()
 
     def init_ui(self):
         self.setWindowTitle("Admin Settings")
@@ -26,7 +32,7 @@ class SettingsDialog(QDialog):
         save_path_frame.setObjectName("SettingFrame")
         save_path_layout = QVBoxLayout()
 
-        save_path_label = QLabel("Set Path Save PIC:")
+        save_path_label = QLabel("Set Path to Save Picture:")
         save_path_label.setObjectName("SettingLabel")
 
         path_layout = QHBoxLayout()
@@ -53,11 +59,21 @@ class SettingsDialog(QDialog):
         camera_label = QLabel("Set Default Camera:")
         camera_label.setObjectName("SettingLabel")
 
+        # Camera selection with refresh button
+        camera_selection_layout = QHBoxLayout()
         self.camera_combo = QComboBox()
-        self.camera_combo.addItems(["Camera 1", "Camera 2", "USB Camera", "Built-in Camera"])
+        self.camera_combo.setMinimumWidth(300)
+
+        refresh_camera_btn = QPushButton("🔄 Refresh")
+        refresh_camera_btn.setObjectName("RefreshButton")
+        refresh_camera_btn.setMaximumWidth(80)
+        refresh_camera_btn.clicked.connect(self.refresh_cameras)
+
+        camera_selection_layout.addWidget(self.camera_combo, 1)
+        camera_selection_layout.addWidget(refresh_camera_btn, 0)
 
         camera_layout.addWidget(camera_label)
-        camera_layout.addWidget(self.camera_combo)
+        camera_layout.addLayout(camera_selection_layout)
         camera_frame.setLayout(camera_layout)
 
         # Default Printer Setting
@@ -68,12 +84,54 @@ class SettingsDialog(QDialog):
         printer_label = QLabel("Set Default Printer:")
         printer_label.setObjectName("SettingLabel")
 
+        # Printer selection with refresh button
+        printer_selection_layout = QHBoxLayout()
         self.printer_combo = QComboBox()
-        self.printer_combo.addItems(["Printer 1", "Printer 2", "ID Card Printer", "Default Printer"])
+        self.printer_combo.setMinimumWidth(300)
+
+        refresh_printer_btn = QPushButton("🔄 Refresh")
+        refresh_printer_btn.setObjectName("RefreshButton")
+        refresh_printer_btn.setMaximumWidth(80)
+        refresh_printer_btn.clicked.connect(self.refresh_printers)
+
+        printer_selection_layout.addWidget(self.printer_combo, 1)
+        printer_selection_layout.addWidget(refresh_printer_btn, 0)
 
         printer_layout.addWidget(printer_label)
-        printer_layout.addWidget(self.printer_combo)
+        printer_layout.addLayout(printer_selection_layout)
         printer_frame.setLayout(printer_layout)
+
+        # Photos to Take Setting
+        photos_frame = QFrame()
+        photos_frame.setObjectName("SettingFrame")
+        photos_layout = QVBoxLayout()
+
+        photos_label = QLabel("Photos to Take:")
+        photos_label.setObjectName("SettingLabel")
+
+        self.photos_spin = QSpinBox()
+        self.photos_spin.setRange(1, 10)
+        self.photos_spin.setValue(4)
+
+        photos_layout.addWidget(photos_label)
+        photos_layout.addWidget(self.photos_spin)
+        photos_frame.setLayout(photos_layout)
+
+        # Capture Delay Setting
+        delay_frame = QFrame()
+        delay_frame.setObjectName("SettingFrame")
+        delay_layout = QVBoxLayout()
+
+        delay_label = QLabel("Delay Between Photos (seconds):")
+        delay_label.setObjectName("SettingLabel")
+
+        self.delay_spin = QSpinBox()
+        self.delay_spin.setRange(1, 10)
+        self.delay_spin.setValue(2)
+
+        delay_layout.addWidget(delay_label)
+        delay_layout.addWidget(self.delay_spin)
+        delay_frame.setLayout(delay_layout)
 
         # Buttons
         button_layout = QHBoxLayout()
@@ -92,6 +150,8 @@ class SettingsDialog(QDialog):
         layout.addWidget(save_path_frame)
         layout.addWidget(camera_frame)
         layout.addWidget(printer_frame)
+        layout.addWidget(photos_frame)
+        layout.addWidget(delay_frame)
         layout.addStretch()
         layout.addLayout(button_layout)
 
@@ -110,21 +170,125 @@ class SettingsDialog(QDialog):
             if save_path:
                 self.save_path_input.setText(save_path)
 
-            # Load default camera setting
-            default_camera = db_manager.get_app_config('default_camera')
-            if default_camera:
-                index = self.camera_combo.findText(default_camera)
-                if index >= 0:
-                    self.camera_combo.setCurrentIndex(index)
+            # Load camera and printer settings (devices are loaded separately)
+            self.load_camera_setting()
+            self.load_printer_setting()
 
-            # Load default printer setting
-            default_printer = db_manager.get_app_config('default_printer')
-            if default_printer:
-                index = self.printer_combo.findText(default_printer)
-                if index >= 0:
-                    self.printer_combo.setCurrentIndex(index)
+            # Load photos to take setting
+            photo_count = db_manager.get_app_config('photo_count')
+            if photo_count:
+                self.photos_spin.setValue(int(photo_count))
+
+            # Load capture delay setting
+            capture_delay = db_manager.get_app_config('capture_delay')
+            if capture_delay:
+                self.delay_spin.setValue(int(capture_delay))
         except Exception as e:
             print(f"Error loading settings: {e}")
+
+    def load_devices(self):
+        """Load real camera and printer devices"""
+        self.load_cameras()
+        self.load_printers()
+
+    def load_cameras(self):
+        """Load real camera devices from system"""
+        try:
+            self.camera_combo.clear()
+
+            # Force camera re-detection
+            self.camera_manager.available_cameras = self.camera_manager.detect_cameras()
+            cameras = self.camera_manager.get_available_cameras()
+
+            print(f"Loading {len(cameras)} cameras for admin settings")
+
+            for camera in cameras:
+                camera_text = f"{camera['name']} ({camera['resolution'][0]}x{camera['resolution'][1]})"
+                self.camera_combo.addItem(camera_text)
+                print(f"  Added camera: {camera_text}")
+
+            if not cameras:
+                self.camera_combo.addItem("No cameras found")
+                print("No cameras detected")
+
+        except Exception as e:
+            print(f"Error loading cameras: {e}")
+            self.camera_combo.clear()
+            self.camera_combo.addItem("Error loading cameras")
+
+    def load_printers(self):
+        """Load real printer devices from system"""
+        try:
+            self.printer_combo.clear()
+
+            # Get system printers
+            printers = self.print_manager.get_available_printers()
+
+            print(f"Loading {len(printers)} printers for admin settings")
+
+            for printer in printers:
+                printer_text = f"{printer['name']} ({printer['status']})"
+                self.printer_combo.addItem(printer_text)
+                print(f"  Added printer: {printer_text}")
+
+            if not printers:
+                self.printer_combo.addItem("No printers found")
+                print("No printers detected")
+
+        except Exception as e:
+            print(f"Error loading printers: {e}")
+            self.printer_combo.clear()
+            self.printer_combo.addItem("Error loading printers")
+
+    def refresh_cameras(self):
+        """Refresh camera list"""
+        self.load_cameras()
+        # Try to restore previous selection if it still exists
+        self.load_camera_setting()
+
+    def refresh_printers(self):
+        """Refresh printer list"""
+        self.load_printers()
+        # Try to restore previous selection if it still exists
+        self.load_printer_setting()
+
+    def load_camera_setting(self):
+        """Load camera setting from database and select in combo"""
+        try:
+            default_camera = db_manager.get_app_config('default_camera')
+            if default_camera:
+                # Try to find exact match first
+                index = self.camera_combo.findText(default_camera, Qt.MatchFlag.MatchExactly)
+                if index >= 0:
+                    self.camera_combo.setCurrentIndex(index)
+                    return
+
+                # Try to find partial match
+                for i in range(self.camera_combo.count()):
+                    if default_camera.lower() in self.camera_combo.itemText(i).lower():
+                        self.camera_combo.setCurrentIndex(i)
+                        return
+        except Exception as e:
+            print(f"Error loading camera setting: {e}")
+
+    def load_printer_setting(self):
+        """Load printer setting from database and select in combo"""
+        try:
+            default_printer = db_manager.get_app_config('default_printer')
+            if default_printer:
+                # Try to find exact match first
+                index = self.printer_combo.findText(default_printer, Qt.MatchFlag.MatchExactly)
+                if index >= 0:
+                    self.printer_combo.setCurrentIndex(index)
+                    return
+
+                # Try to find partial match
+                for i in range(self.printer_combo.count()):
+                    if default_printer.lower() in self.printer_combo.itemText(i).lower():
+                        self.printer_combo.setCurrentIndex(i)
+                        return
+        except Exception as e:
+            print(f"Error loading printer setting: {e}")
 
     def show_message_box(self, title, message, icon_type):
         """Show a styled message box with proper text visibility"""
@@ -166,8 +330,22 @@ class SettingsDialog(QDialog):
         try:
             # Get values from form
             save_path = self.save_path_input.text().strip()
-            default_camera = self.camera_combo.currentText()
-            default_printer = self.printer_combo.currentText()
+
+            # Extract actual device names from display text
+            camera_text = self.camera_combo.currentText()
+            if "(" in camera_text:
+                default_camera = camera_text.split(" (")[0]  # Get name before resolution
+            else:
+                default_camera = camera_text
+
+            printer_text = self.printer_combo.currentText()
+            if "(" in printer_text:
+                default_printer = printer_text.split(" (")[0]  # Get name before status
+            else:
+                default_printer = printer_text
+
+            photo_count = str(self.photos_spin.value())
+            capture_delay = str(self.delay_spin.value())
 
             # Validate required fields
             if not save_path:
@@ -179,6 +357,8 @@ class SettingsDialog(QDialog):
             success &= db_manager.set_app_config('image_save_path', save_path)
             success &= db_manager.set_app_config('default_camera', default_camera)
             success &= db_manager.set_app_config('default_printer', default_printer)
+            success &= db_manager.set_app_config('photo_count', photo_count)
+            success &= db_manager.set_app_config('capture_delay', capture_delay)
 
             if success:
                 self.show_message_box("Settings", "Settings saved successfully!", QMessageBox.Icon.Information)
@@ -209,7 +389,7 @@ class SettingsDialog(QDialog):
             margin-bottom: 8px;
         }
 
-        QLineEdit, QComboBox {
+        QLineEdit, QComboBox, QSpinBox {
             padding: 12px;
             border: 1px solid #CCCCCC;
             border-radius: 6px;
@@ -219,7 +399,7 @@ class SettingsDialog(QDialog):
             min-height: 20px;
         }
 
-        QLineEdit:focus, QComboBox:focus {
+        QLineEdit:focus, QComboBox:focus, QSpinBox:focus {
             border: 2px solid #E60012;
             background-color: #FFFFFF;
         }
@@ -263,6 +443,41 @@ class SettingsDialog(QDialog):
         }
         #BrowseButton:hover {
             background-color: #0056B3;
+        }
+
+        #RefreshButton {
+            background-color: #6C757D;
+            color: #FFFFFF;
+            font-weight: bold;
+            font-size: 11px;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            min-width: 60px;
+        }
+        #RefreshButton:hover {
+            background-color: #5A6268;
+        }
+
+        #DeviceDisplay {
+            background-color: #F8F9FA;
+            border: 1px solid #CCCCCC;
+            border-radius: 6px;
+            padding: 12px;
+            color: #333333;
+            font-size: 14px;
+            min-height: 40px;
+        }
+
+        #ErrorLabel {
+            color: #DC3545;
+            font-weight: bold;
+            font-size: 12px;
+            background-color: #F8D7DA;
+            border: 1px solid #F5C6CB;
+            border-radius: 4px;
+            padding: 8px;
+            margin-top: 5px;
         }
         """
 

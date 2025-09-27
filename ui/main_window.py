@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 import os
 from modules.camera_manager import CameraManager, CaptureTimer
+from modules.database import db_manager
 from config import UI_SETTINGS, CAMERA_SETTINGS
 
 
@@ -113,6 +114,122 @@ class MainWindow(QMainWindow):
 
         # Set style
         self.apply_modern_style()
+
+    def get_config_value(self, config_name, default_value):
+        """Get configuration value from database with fallback to default"""
+        try:
+            value = db_manager.get_app_config(config_name)
+            if value is not None:
+                # Try to convert to appropriate type
+                if isinstance(default_value, int):
+                    return int(value)
+                elif isinstance(default_value, float):
+                    return float(value)
+                else:
+                    return value
+            return default_value
+        except Exception as e:
+            print(f"Error loading config {config_name}: {e}")
+            return default_value
+
+    def validate_camera_from_database(self):
+        """Validate if the camera from database is still available"""
+        try:
+            default_camera = db_manager.get_app_config('default_camera')
+            if not default_camera:
+                self.camera_error_label.hide()
+                return
+
+            # Check if the saved camera is still available
+            cameras = self.camera_manager.get_available_cameras()
+            camera_found = False
+
+            for camera in cameras:
+                if default_camera.lower() in camera['name'].lower():
+                    camera_found = True
+                    break
+
+            if not camera_found:
+                # Camera not found, show error
+                self.camera_error_label.setText(f"⚠️ Configured camera '{default_camera}' is not available. Please contact admin to update camera settings.")
+                self.camera_error_label.show()
+            else:
+                # Camera is available, hide error
+                self.camera_error_label.hide()
+
+        except Exception as e:
+            print(f"Error validating camera from database: {e}")
+            self.camera_error_label.setText(f"Error validating camera: {str(e)}")
+            self.camera_error_label.show()
+
+    def auto_select_camera_from_database(self):
+        """Auto-select camera from database configuration"""
+        try:
+            default_camera = db_manager.get_app_config('default_camera')
+            if not default_camera:
+                self.camera_status.setText("Camera: No camera configured")
+                self.camera_label.setText("No Camera Configured\nPlease contact admin to configure camera")
+                self.camera_error_label.setText("⚠️ No camera configured. Please contact admin to set up camera.")
+                self.camera_error_label.show()
+                return False
+
+            # Check if the saved camera is still available
+            cameras = self.camera_manager.get_available_cameras()
+            camera_found = False
+            camera_index = -1
+
+            for i, camera in enumerate(cameras):
+                if default_camera.lower() in camera['name'].lower():
+                    camera_found = True
+                    camera_index = i
+                    break
+
+            if not camera_found:
+                # Camera not found, show error
+                self.camera_status.setText(f"Camera: '{default_camera}' not available")
+                self.camera_label.setText(f"Camera Error\n'{default_camera}' not available\nPlease contact admin to update camera settings")
+                self.camera_error_label.setText(f"⚠️ Configured camera '{default_camera}' is not available. Please contact admin to update camera settings.")
+                self.camera_error_label.show()
+                return False
+            else:
+                # Camera found, select it
+                self.camera_manager.switch_camera(camera_index)
+                self.camera_status.setText(f"Camera: {default_camera} (Ready)")
+                self.camera_error_label.hide()
+                return True
+
+        except Exception as e:
+            print(f"Error auto-selecting camera from database: {e}")
+            self.camera_status.setText("Camera: Error loading configuration")
+            self.camera_label.setText("Camera Error\nError loading camera configuration\nPlease contact admin")
+            self.camera_error_label.setText(f"Error loading camera configuration: {str(e)}")
+            self.camera_error_label.show()
+            return False
+
+    def update_camera_info_display(self):
+        """Update camera information display"""
+        try:
+            default_camera = db_manager.get_app_config('default_camera')
+            cameras = self.camera_manager.get_available_cameras()
+
+            if not default_camera:
+                self.camera_info_label.setText("No camera configured\nContact admin to set up camera")
+                return
+
+            # Find the configured camera
+            camera_found = False
+            for camera in cameras:
+                if default_camera.lower() in camera['name'].lower():
+                    self.camera_info_label.setText(f"Configured Camera:\n{camera['name']}\nResolution: {camera['resolution'][0]}x{camera['resolution'][1]}")
+                    camera_found = True
+                    break
+
+            if not camera_found:
+                self.camera_info_label.setText(f"Configured Camera:\n{default_camera}\n(Not Available)")
+
+        except Exception as e:
+            print(f"Error updating camera info display: {e}")
+            self.camera_info_label.setText("Error loading camera information")
 
     def create_camera_section(self):
         """Create camera preview section"""
@@ -273,19 +390,24 @@ class MainWindow(QMainWindow):
         return control_frame
 
     def create_camera_selection_group(self):
-        """Create camera selection group"""
-        group = QGroupBox("Camera Selection")
+        """Create camera selection group - removed, camera is auto-selected from database"""
+        group = QGroupBox("Camera Information")
         layout = QVBoxLayout(group)
 
-        # Camera dropdown
-        self.camera_combo = QComboBox()
-        self.camera_combo.currentIndexChanged.connect(self.on_camera_changed)
-        layout.addWidget(self.camera_combo)
-
-        # Refresh button
-        refresh_btn = QPushButton("🔄 Refresh Cameras")
-        refresh_btn.clicked.connect(self.refresh_cameras)
-        layout.addWidget(refresh_btn)
+        # Camera info label (readonly)
+        self.camera_info_label = QLabel("Loading camera information...")
+        self.camera_info_label.setStyleSheet("""
+            QLabel {
+                color: #2c3e50;
+                font-weight: bold;
+                font-size: 12px;
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 8px;
+            }
+        """)
+        layout.addWidget(self.camera_info_label)
 
         return group
 
@@ -301,7 +423,17 @@ class MainWindow(QMainWindow):
         layout.addWidget(photos_label, 0, 0)
         self.photo_count_spin = QSpinBox()
         self.photo_count_spin.setRange(1, 10)
-        self.photo_count_spin.setValue(CAMERA_SETTINGS['capture_count'])
+        self.photo_count_spin.setReadOnly(True)
+        self.photo_count_spin.setStyleSheet("""
+            QSpinBox {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border: 2px solid #dee2e6;
+            }
+        """)
+        # Load value from database
+        photo_count = self.get_config_value('photo_count', CAMERA_SETTINGS['capture_count'])
+        self.photo_count_spin.setValue(int(photo_count))
         layout.addWidget(self.photo_count_spin, 0, 1)
 
         # Delay between photos
@@ -310,7 +442,17 @@ class MainWindow(QMainWindow):
         layout.addWidget(delay_label, 1, 0)
         self.delay_spin = QSpinBox()
         self.delay_spin.setRange(1, 10)
-        self.delay_spin.setValue(int(CAMERA_SETTINGS['capture_delay']))
+        self.delay_spin.setReadOnly(True)
+        self.delay_spin.setStyleSheet("""
+            QSpinBox {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border: 2px solid #dee2e6;
+            }
+        """)
+        # Load value from database
+        delay_value = self.get_config_value('capture_delay', CAMERA_SETTINGS['capture_delay'])
+        self.delay_spin.setValue(int(delay_value))
         layout.addWidget(self.delay_spin, 1, 1)
 
         return group
@@ -325,6 +467,23 @@ class MainWindow(QMainWindow):
         self.camera_status.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; }")
         layout.addWidget(self.camera_status)
 
+        # Camera error label
+        self.camera_error_label = QLabel("")
+        self.camera_error_label.setStyleSheet("""
+            QLabel {
+                color: #DC3545;
+                font-weight: bold;
+                font-size: 11px;
+                background-color: #F8D7DA;
+                border: 1px solid #F5C6CB;
+                border-radius: 4px;
+                padding: 5px;
+                margin-top: 3px;
+            }
+        """)
+        self.camera_error_label.hide()
+        layout.addWidget(self.camera_error_label)
+
         # Capture progress
         self.progress_bar = QProgressBar()
         self.progress_bar.hide()
@@ -338,21 +497,22 @@ class MainWindow(QMainWindow):
         return group
 
     def setup_camera(self):
-        """Setup camera and populate camera list"""
+        """Setup camera and auto-select from database"""
         print("Setting up camera...")
 
-        self.refresh_cameras()
-
-        # Don't automatically start camera preview - let user manually start it
+        # Load cameras
+        self.camera_manager.available_cameras = self.camera_manager.detect_cameras()
         cameras = self.camera_manager.get_available_cameras()
-        if cameras:
-            print(f"Found {len(cameras)} cameras, waiting for user to start preview")
-            self.camera_status.setText(f"Camera: {len(cameras)} found - Select to start")
-            self.camera_label.setText("Select a camera from dropdown\nto start preview")
-        else:
-            print("No cameras found")
-            self.camera_status.setText("Camera: No cameras found")
-            self.camera_label.setText("No Camera Available\nPlease connect a camera and click Refresh")
+
+        # Try to auto-select camera from database
+        camera_available = self.auto_select_camera_from_database()
+
+        # Update camera info display
+        self.update_camera_info_display()
+
+        # If camera is available, start preview automatically
+        if camera_available:
+            self.start_camera_preview()
 
     def delayed_camera_start(self):
         """Start camera preview after UI is fully loaded"""
@@ -366,34 +526,24 @@ class MainWindow(QMainWindow):
             self.camera_label.setText("Camera Error\nTry refreshing cameras")
 
     def refresh_cameras(self):
-        """Refresh camera list"""
-        self.camera_combo.clear()
-
+        """Refresh camera detection and re-validate database camera"""
         # Force camera re-detection
         self.camera_manager.available_cameras = self.camera_manager.detect_cameras()
         cameras = self.camera_manager.get_available_cameras()
 
         print(f"UI: Refreshing cameras, found {len(cameras)}")
 
-        for i, camera in enumerate(cameras):
-            camera_text = f"{camera['name']} ({camera['resolution'][0]}x{camera['resolution'][1]})"
-            self.camera_combo.addItem(camera_text)
-            print(f"  Added to combo: {camera_text}")
-
-        if cameras:
-            self.camera_status.setText(f"Camera: {len(cameras)} found")
-        else:
-            self.camera_status.setText("Camera: None found")
-
-    def on_camera_changed(self, index):
-        """Handle camera selection change"""
-        if index >= 0:
-            self.camera_manager.switch_camera(index)
-            self.start_camera_preview()
+        # Re-validate camera from database
+        self.auto_select_camera_from_database()
+        self.update_camera_info_display()
 
     def start_camera_preview(self):
-        """Start camera preview"""
+        """Start camera preview if camera is available"""
         try:
+            # Check if camera is available before starting
+            if not self.auto_select_camera_from_database():
+                return  # Camera not available, error already shown
+
             print("Attempting to start camera preview...")
             self.camera_manager.start_preview(self.update_camera_frame)
             self.camera_status.setText("Camera: Starting...")
@@ -405,7 +555,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             print(f"Error in start_camera_preview: {e}")
             self.camera_status.setText("Camera: Error")
-            self.camera_label.setText("Camera Error\nTry refreshing cameras")
+            self.camera_label.setText("Camera Error\nError starting camera preview\nPlease contact admin")
 
     def check_camera_status(self):
         """Check if camera preview is actually working"""

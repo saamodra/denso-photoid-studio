@@ -160,6 +160,10 @@ def insert_sample_data():
     logger.info("Inserting sample app configurations...")
     app_configs = [
         ('image_save_path', 'images'),
+        ('photo_count', '4'),
+        ('capture_delay', '2'),
+        ('default_camera', 'Camera 1'),
+        ('default_printer', 'Default Printer'),
     ]
 
     for name, value in app_configs:

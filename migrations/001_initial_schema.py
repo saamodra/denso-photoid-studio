@@ -84,6 +84,10 @@ def upgrade(conn):
     default_configs = [
         ('app_name', 'ID Card Photo Machine'),
         ('image_save_path', 'images'),
+        ('photo_count', '4'),
+        ('capture_delay', '2'),
+        ('default_camera', 'Camera 1'),
+        ('default_printer', 'Default Printer'),
     ]
 
     for name, value in default_configs:
