@@ -140,14 +140,15 @@ class LoginPage(QWidget):
         self.password_entry.setMinimumHeight(40)
         container_layout.addWidget(password_label)
         container_layout.addWidget(self.password_entry)
+        self.password_entry.returnPressed.connect(self.check_login)
 
         container_layout.addSpacing(20)
 
         # Tombol Login
-        login_button = QPushButton("Login")
-        login_button.setMinimumHeight(50)
-        login_button.clicked.connect(self.check_login)
-        container_layout.addWidget(login_button)
+        self.login_button = QPushButton("Login")
+        self.login_button.setMinimumHeight(50)
+        self.login_button.clicked.connect(self.check_login)
+        container_layout.addWidget(self.login_button)
 
         # Tempatkan kontainer login di tengah grid layout utama
         main_layout.addWidget(login_container, 0, 0, Qt.AlignmentFlag.AlignCenter)
