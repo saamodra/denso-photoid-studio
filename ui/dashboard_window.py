@@ -3,22 +3,24 @@ Dashboard/Welcome Window
 Welcome page for logged-in users with options to start photo capture
 """
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                            QLabel, QPushButton, QFrame, QGroupBox, QGridLayout, QDialog)
+                            QLabel, QPushButton, QFrame, QGroupBox, QGridLayout, QDialog, QTextEdit, QSizePolicy)
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont, QPixmap, QIcon
 import os
+from datetime import datetime, timedelta
 from modules.session_manager import session_manager
+from modules.database import db_manager
 from config import UI_SETTINGS
 
 
 class CustomStyledDialog(QDialog):
-    """Custom dialog with consistent styling matching the logout confirmation"""
+    """Custom dialog with consistent styling that auto-adjusts size based on content"""
 
-    def __init__(self, parent=None, title="", message="", buttons=None, icon_type="info", rich_text=False):
+    def __init__(self, parent=None, title="", message="", buttons=None, icon_type="info",
+                 rich_text=False, custom_size=None):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setModal(True)
-        self.setFixedSize(500, 400)  # Larger for instructions
 
         # Main layout
         layout = QVBoxLayout(self)
@@ -48,6 +50,23 @@ class CustomStyledDialog(QDialog):
             self.buttons.append(btn)
 
         layout.addLayout(button_layout)
+
+        # Set size - either custom or auto-adjust based on content
+        if custom_size:
+            self.setFixedSize(custom_size[0], custom_size[1])
+        else:
+            # Auto-adjust size based on content
+            self.adjustSize()
+            # Set minimum and maximum reasonable sizes
+            current_size = self.size()
+            min_width = 300
+            max_width = 800
+            min_height = 120
+            max_height = 600
+
+            width = max(min_width, min(max_width, current_size.width()))
+            height = max(min_height, min(max_height, current_size.height()))
+            self.resize(width, height)
 
         # Apply consistent styling
         self.setStyleSheet("""
@@ -92,6 +111,377 @@ class CustomStyledDialog(QDialog):
         """Set a button as cancel button for different styling"""
         if 0 <= button_index < len(self.buttons):
             self.buttons[button_index].setObjectName("cancelButton")
+
+
+class RequestDialog(QDialog):
+    """Unified dialog for showing request details and form based on status"""
+
+    def __init__(self, parent=None, user=None, request_data=None):
+        super().__init__(parent)
+        self.user = user or {}
+        self.request_data = request_data or {}
+        self.setWindowTitle("Formulir Permintaan")
+        self.setModal(True)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(15)
+
+        # Title
+        title_label = QLabel("Formulir Permintaan")
+        title_label.setObjectName("TitleLabel")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title_label)
+
+        # Add explanation section for why user needs to request
+        self._add_explanation_section(layout)
+
+        # Determine what to show based on request status
+        status = self.request_data.get('status', '') if self.request_data else ''
+
+        # Show details section if there's a request (requested or rejected)
+        if self.request_data and status in ['requested', 'rejected']:
+            self._add_details_section(layout)
+
+        # Show form section if no request or if rejected
+        if not self.request_data or status == 'rejected':
+            self._add_form_section(layout)
+
+        # Button layout
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+
+        if self.request_data and status in ['requested', 'approved']:
+            # Show close button for requested/approved
+            close_button = QPushButton("Tutup")
+            close_button.clicked.connect(self.accept)
+            button_layout.addWidget(close_button)
+        else:
+            # Show cancel and send buttons for form
+            cancel_button = QPushButton("Batal")
+            cancel_button.setObjectName("cancelButton")
+            cancel_button.clicked.connect(self.reject)
+            button_layout.addWidget(cancel_button)
+
+            send_button = QPushButton("Kirim Permintaan")
+            send_button.clicked.connect(self._handle_send)
+            button_layout.addWidget(send_button)
+
+        layout.addLayout(button_layout)
+
+        # Apply styling first
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #FFFFFF;
+                color: #333333;
+            }
+            QLabel {
+                color: #333333;
+                font-size: 14px;
+                margin: 0px;
+                padding: 0px;
+            }
+            QLabel#TitleLabel {
+                font-size: 20px;
+                font-weight: bold;
+                color: #333333;
+                margin-bottom: 10px;
+            }
+            QLabel#SectionTitle {
+                font-size: 16px;
+                font-weight: bold;
+                color: #333333;
+                margin-bottom: 5px;
+            }
+            QFrame#DetailsFrame {
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                padding: 10px;
+            }
+            QFrame#NotesFrame {
+                background-color: #fff3cd;
+                border: 1px solid #ffeaa7;
+                border-radius: 8px;
+                padding: 10px;
+            }
+            QTextEdit {
+                border: 1px solid #CCCCCC;
+                border-radius: 8px;
+                padding: 8px;
+                font-size: 13px;
+                background-color: #FFFFFF;
+                color: #333333;
+            }
+            QPushButton {
+                background-color: #E60012;
+                color: #FFFFFF;
+                font-weight: bold;
+                font-size: 14px;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 20px;
+                min-width: 100px;
+            }
+            QPushButton:hover {
+                background-color: #CC0010;
+            }
+            QPushButton:pressed {
+                background-color: #99000C;
+            }
+            QPushButton#cancelButton {
+                background-color: #6c757d;
+            }
+            QPushButton#cancelButton:hover {
+                background-color: #5a6268;
+            }
+            QPushButton#cancelButton:pressed {
+                background-color: #495057;
+            }
+        """)
+
+        # Dynamic sizing based on content
+        self._adjust_dialog_size()
+
+    def _add_explanation_section(self, layout):
+        """Add explanation section for why user needs to request permission"""
+        # Only show explanation if there's no existing request
+        if not self.request_data:
+            # Check if user's last photo was less than 1 year ago
+            last_take_photo = self.user.get('last_take_photo')
+            if last_take_photo:
+                try:
+                    last_take_dt = self._parse_datetime(last_take_photo)
+                    if last_take_dt:
+                        days_ago = (datetime.now() - last_take_dt).days
+                        if days_ago < 365:
+                            # Create explanation frame
+                            explanation_frame = QFrame()
+                            explanation_frame.setObjectName("ExplanationFrame")
+                            explanation_frame.setStyleSheet("""
+                                QFrame#ExplanationFrame {
+                                    background-color: #fff3cd;
+                                    border: 1px solid #ffeaa7;
+                                    border-radius: 8px;
+                                    padding: 15px;
+                                }
+                            """)
+
+                            explanation_layout = QVBoxLayout(explanation_frame)
+                            explanation_layout.setSpacing(8)
+
+                            # Title
+                            title_label = QLabel("Perlu Izin untuk Mengambil Foto Baru")
+                            title_label.setStyleSheet("""
+                                QLabel {
+                                    font-size: 16px;
+                                    font-weight: bold;
+                                    color: #856404;
+                                    margin-bottom: 5px;
+                                }
+                            """)
+                            explanation_layout.addWidget(title_label)
+
+                            # Explanation text
+                            explanation_text = f"""
+                            Your last photo was taken on {last_take_dt.strftime('%Y-%m-%d %H:%M:%S')} ({days_ago} days ago). According to company policy, you can only take a new ID photo once per year. Since your last photo was taken less than a year ago, you need to request permission from the administrator to take a new photo.  Please provide a valid reason for your request below.
+                            """
+
+                            explanation_label = QLabel(explanation_text.strip())
+                            explanation_label.setWordWrap(True)
+                            explanation_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+                            explanation_label.setStyleSheet("""
+                                QLabel {
+                                    color: #856404;
+                                    font-size: 14px;
+                                    line-height: 1.4;
+                                }
+                            """)
+                            explanation_layout.addWidget(explanation_label)
+
+                            layout.addWidget(explanation_frame)
+                except:
+                    pass
+
+    @staticmethod
+    def _parse_datetime(value):
+        """Parse datetime value from various formats"""
+        if not value:
+            return None
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value)
+            except ValueError:
+                for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S"):
+                    try:
+                        return datetime.strptime(value, fmt)
+                    except ValueError:
+                        continue
+        return None
+
+    def showEvent(self, event):
+        """Override showEvent to ensure proper sizing when dialog is shown"""
+        super().showEvent(event)
+        # Re-adjust size after the dialog is fully shown
+        self._adjust_dialog_size()
+
+    def _add_details_section(self, layout):
+        """Add the details section showing last request info"""
+        # Section title
+        section_title = QLabel("Permintaan Terakhir Anda")
+        section_title.setObjectName("SectionTitle")
+        section_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(section_title)
+
+        # Details frame
+        details_frame = QFrame()
+        details_frame.setObjectName("DetailsFrame")
+        details_layout = QVBoxLayout(details_frame)
+        details_layout.setSpacing(8)
+        details_layout.setContentsMargins(15, 15, 15, 15)
+        details_frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        # Request time
+        request_time = self.request_data.get('request_time', '')
+        if request_time:
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(request_time.replace('Z', '+00:00'))
+                formatted_time = dt.strftime('%Y-%m-%d %H:%M:%S')
+            except:
+                formatted_time = request_time
+            time_label = QLabel(f"<b>Time:</b> {formatted_time}")
+            details_layout.addWidget(time_label)
+
+        # Status
+        status = self.request_data.get('status', 'requested')
+        if status == 'approved':
+            status_text = "Disetujui"
+            status_color = "#28a745"
+        elif status == 'rejected':
+            status_text = "Ditolak"
+            status_color = "#dc3545"
+        else:
+            status_text = "Menunggu"
+            status_color = "#ffc107"
+
+        status_label = QLabel(f"<b>Status:</b> <span style='color: {status_color};'>{status_text}</span>")
+        details_layout.addWidget(status_label)
+
+        # Request Description
+        request_desc = self.request_data.get('request_desc', '')
+        if request_desc:
+            desc_label = QLabel(f"<b>Description:</b> {request_desc}")
+            desc_label.setWordWrap(True)
+            desc_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+            details_layout.addWidget(desc_label)
+
+        # Remarks
+        remark = self.request_data.get('remark', '')
+        if remark:
+            remark_label = QLabel(f"<b>Remarks:</b> {remark}")
+            remark_label.setWordWrap(True)
+            remark_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+            details_layout.addWidget(remark_label)
+
+        layout.addWidget(details_frame)
+
+    def _add_form_section(self, layout):
+        """Add the form section for new request"""
+        # Reason label
+        reason_label = QLabel("Alasan")
+        reason_label.setObjectName("SectionTitle")
+        reason_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(reason_label)
+
+        # Reason input
+        self.reason_input = QTextEdit()
+        self.reason_input.setPlaceholderText("Masukkan alasan permintaan Anda...")
+        self.reason_input.setMinimumHeight(100)
+        self.reason_input.setMaximumHeight(150)
+        layout.addWidget(self.reason_input)
+
+    def _adjust_dialog_size(self):
+        """Adjust dialog size dynamically based on content"""
+        # Force layout update first
+        self.layout().update()
+        self.updateGeometry()
+
+        # Calculate the required size based on content
+        self.adjustSize()
+
+        # Get the size hint from the layout
+        size_hint = self.sizeHint()
+
+        # Determine if we have form content (reason input)
+        has_form = hasattr(self, 'reason_input')
+
+        # Set reasonable bounds based on content
+        min_width = 500
+        max_width = 700
+
+        if has_form:
+            # When there's a form, allow more height
+            min_height = 300
+            max_height = 600
+        else:
+            # When there's no form, be more compact
+            min_height = 150
+            max_height = 400
+
+        # Calculate optimal size based on content
+        width = max(min_width, min(max_width, size_hint.width()))
+        height = max(min_height, min(max_height, size_hint.height()))
+
+        # Apply the calculated size
+        self.resize(width, height)
+
+        # Set minimum size to prevent it from being too small
+        self.setMinimumSize(min_width, min_height)
+
+        # Ensure the dialog doesn't exceed screen bounds
+        screen = self.screen().availableGeometry()
+        if self.width() > screen.width():
+            self.resize(screen.width() - 50, self.height())
+        if self.height() > screen.height():
+            self.resize(self.width(), screen.height() - 50)
+
+
+    def _handle_send(self):
+        """Handle send request button click"""
+        reason = self.reason_input.toPlainText().strip()
+        if not reason:
+            dialog = CustomStyledDialog(
+                self,
+                "Alasan Dibutuhkan",
+                "Silakan isi alasan permintaan sebelum mengirim."
+            )
+            dialog.exec()
+            return
+
+        npk = self.user.get('npk')
+        if not npk:
+            dialog = CustomStyledDialog(
+                self,
+                "Data Pengguna Tidak Lengkap",
+                "Tidak dapat mengirim permintaan karena data pengguna tidak lengkap."
+            )
+            dialog.exec()
+            return
+
+        if db_manager.add_request_history(npk, reason):
+            self.accept()
+        else:
+            dialog = CustomStyledDialog(
+                self,
+                "Gagal Mengirim",
+                "Permintaan tidak dapat dikirim saat ini. Silakan coba lagi."
+            )
+            dialog.exec()
+
+
 
 
 class DashboardWindow(QMainWindow):
@@ -267,7 +657,6 @@ class DashboardWindow(QMainWindow):
             }
             QPushButton:hover {
                 background-color: #CC0010;
-                transform: scale(1.02);
             }
             QPushButton:pressed {
                 background-color: #99000C;
@@ -380,7 +769,56 @@ class DashboardWindow(QMainWindow):
 
     def start_photo_capture_clicked(self):
         """Handle start photo capture button click"""
-        self.start_photo_capture.emit()
+        user = self.current_user or session_manager.get_current_user()
+
+        if not user:
+            dialog = CustomStyledDialog(
+                self,
+                "Pengguna Tidak Ditemukan",
+                "Tidak ada pengguna yang sedang login. Silakan login kembali."
+            )
+            dialog.exec()
+            return
+
+        last_take_photo = user.get('last_take_photo')
+        last_take_dt = self._parse_datetime(last_take_photo)
+
+        if not last_take_dt or datetime.now() - last_take_dt >= timedelta(days=365):
+            self.start_photo_capture.emit()
+            return
+
+        # Get the latest request for the user
+        npk = user.get('npk')
+        if npk:
+            latest_request = db_manager.get_latest_request(npk)
+            if latest_request:
+                status = latest_request.get('status', '')
+                if status == 'requested':
+                    # Show details only for requested status
+                    request_dialog = RequestDialog(self, user, latest_request)
+                    request_dialog.exec()
+                    return
+                elif status == 'rejected':
+                    # Show details + form for rejected status
+                    request_dialog = RequestDialog(self, user, latest_request)
+                    if request_dialog.exec() == QDialog.DialogCode.Accepted:
+                        confirm_dialog = CustomStyledDialog(
+                            self,
+                            "Permintaan Terkirim",
+                            "Permintaan Anda telah dikirim ke admin untuk ditinjau."
+                        )
+                        confirm_dialog.exec()
+                    return
+
+        # No request or approved request, show form only
+        request_dialog = RequestDialog(self, user, None)
+        if request_dialog.exec() == QDialog.DialogCode.Accepted:
+            confirm_dialog = CustomStyledDialog(
+                self,
+                "Permintaan Terkirim",
+                "Permintaan Anda telah dikirim ke admin untuk ditinjau."
+            )
+            confirm_dialog.exec()
 
     def show_instructions(self):
         """Show instructions dialog"""
@@ -392,7 +830,7 @@ class DashboardWindow(QMainWindow):
         <li>Pilih kamera yang akan digunakan</li>
         <li>Atur jumlah foto dan delay sesuai kebutuhan</li>
         <li>Posisikan diri di depan kamera</li>
-        <li>Klik "Take Photos" untuk memulai pengambilan</li>
+        <li>Klik "Ambil Foto" untuk memulai pengambilan</li>
         <li>Ikuti instruksi countdown yang muncul</li>
         <li>Pilih foto terbaik dari hasil pengambilan</li>
         <li>Proses foto menjadi ID card</li>
@@ -422,7 +860,7 @@ class DashboardWindow(QMainWindow):
 
         # Create custom styled dialog
         dialog = QDialog(self)
-        dialog.setWindowTitle("Konfirmasi Logout")
+        dialog.setWindowTitle("Konfirmasi Keluar")
         dialog.setFixedSize(350, 150)
         dialog.setModal(True)
 
@@ -486,7 +924,7 @@ class DashboardWindow(QMainWindow):
         button_layout.addWidget(cancel_btn)
 
         # Logout button
-        logout_btn = QPushButton("Logout")
+        logout_btn = QPushButton("Keluar")
         logout_btn.clicked.connect(dialog.accept)
         button_layout.addWidget(logout_btn)
 
@@ -551,3 +989,20 @@ class DashboardWindow(QMainWindow):
         # Let the main application handle the close event
         # No confirmation dialog here to avoid double confirmation
         event.accept()
+
+    @staticmethod
+    def _parse_datetime(value):
+        if not value:
+            return None
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value)
+            except ValueError:
+                for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S"):
+                    try:
+                        return datetime.strptime(value, fmt)
+                    except ValueError:
+                        continue
+        return None

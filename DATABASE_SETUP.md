@@ -39,7 +39,7 @@ The database follows the Entity-Relationship Diagram (ERD) with the following ta
    - `npk` (TEXT, FOREIGN KEY) - References users.npk
    - `request_time` (DATETIME) - Request timestamp
    - `request_desc` (TEXT) - Request description
-   - `status` (TEXT) - Request status (pending, in_progress, completed)
+   - `status` (TEXT) - Request status (requested, approved, rejected)
    - `remark` (TEXT) - Additional remarks
    - `respons_time` (DATETIME) - Response timestamp
    - `respons_name` (TEXT) - Responder name
@@ -105,7 +105,7 @@ db_manager.create_user(user_data)
 db_manager.add_photo_history('EMP001', datetime.now())
 
 # Add request history
-db_manager.add_request_history('EMP001', 'Card replacement request', 'pending')
+db_manager.add_request_history('EMP001', 'Card replacement request', 'requested')
 
 # Get application configuration
 value = db_manager.get_app_config('app_name')
