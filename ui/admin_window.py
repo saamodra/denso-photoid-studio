@@ -102,7 +102,7 @@ class SettingsDialog(QDialog):
         self.load_devices()
 
     def init_ui(self):
-        self.setWindowTitle("Admin Settings")
+        self.setWindowTitle("Pengaturan Admin")
         self.setFixedWidth(768)
         self.setStyleSheet(self.get_settings_stylesheet())
 
@@ -113,13 +113,13 @@ class SettingsDialog(QDialog):
         save_path_frame.setObjectName("SettingFrame")
         save_path_layout = QVBoxLayout()
 
-        save_path_label = QLabel("Set Path to Save Picture:")
+        save_path_label = QLabel("Atur Path untuk Menyimpan Gambar:")
         save_path_label.setObjectName("SettingLabel")
 
         path_layout = QHBoxLayout()
         self.save_path_input = QLineEdit()
-        self.save_path_input.setPlaceholderText("Select folder path...")
-        browse_btn = QPushButton("Browse")
+        self.save_path_input.setPlaceholderText("Pilih path folder...")
+        browse_btn = QPushButton("Pilih")
         browse_btn.setObjectName("BrowseButton")
         browse_btn.setMinimumWidth(100)
         browse_btn.clicked.connect(self.browse_save_path)
@@ -137,7 +137,7 @@ class SettingsDialog(QDialog):
         camera_frame.setObjectName("SettingFrame")
         camera_layout = QVBoxLayout()
 
-        camera_label = QLabel("Set Default Camera:")
+        camera_label = QLabel("Atur Kamera Default:")
         camera_label.setObjectName("SettingLabel")
 
         # Camera selection with refresh button
@@ -162,7 +162,7 @@ class SettingsDialog(QDialog):
         printer_frame.setObjectName("SettingFrame")
         printer_layout = QVBoxLayout()
 
-        printer_label = QLabel("Set Default Printer:")
+        printer_label = QLabel("Atur Printer Default:")
         printer_label.setObjectName("SettingLabel")
 
         # Printer selection with refresh button
@@ -187,7 +187,7 @@ class SettingsDialog(QDialog):
         photos_frame.setObjectName("SettingFrame")
         photos_layout = QVBoxLayout()
 
-        photos_label = QLabel("Photos to Take:")
+        photos_label = QLabel("Jumlah Foto yang Diambil:")
         photos_label.setObjectName("SettingLabel")
 
         self.photos_spin = QSpinBox()
@@ -203,7 +203,7 @@ class SettingsDialog(QDialog):
         delay_frame.setObjectName("SettingFrame")
         delay_layout = QVBoxLayout()
 
-        delay_label = QLabel("Delay Between Photos (seconds):")
+        delay_label = QLabel("Jeda Antar Foto (detik):")
         delay_label.setObjectName("SettingLabel")
 
         self.delay_spin = QSpinBox()
@@ -216,11 +216,11 @@ class SettingsDialog(QDialog):
 
         # Buttons
         button_layout = QHBoxLayout()
-        save_btn = QPushButton("Save Settings")
+        save_btn = QPushButton("Simpan Pengaturan")
         save_btn.setObjectName("SaveButton")
         save_btn.clicked.connect(self.save_settings)
 
-        cancel_btn = QPushButton("Cancel")
+        cancel_btn = QPushButton("Batal")
         cancel_btn.setObjectName("CancelButton")
         cancel_btn.clicked.connect(self.reject)
 
@@ -239,7 +239,7 @@ class SettingsDialog(QDialog):
         self.setLayout(layout)
 
     def browse_save_path(self):
-        folder = QFileDialog.getExistingDirectory(self, "Select Save Path")
+        folder = QFileDialog.getExistingDirectory(self, "Pilih Path Simpan")
         if folder:
             self.save_path_input.setText(folder)
 
@@ -289,13 +289,13 @@ class SettingsDialog(QDialog):
                 print(f"  Added camera: {camera_text}")
 
             if not cameras:
-                self.camera_combo.addItem("No cameras found")
+                self.camera_combo.addItem("Tidak ada kamera ditemukan")
                 print("No cameras detected")
 
         except Exception as e:
             print(f"Error loading cameras: {e}")
             self.camera_combo.clear()
-            self.camera_combo.addItem("Error loading cameras")
+            self.camera_combo.addItem("Kesalahan memuat kamera")
 
     def load_printers(self):
         """Load real printer devices from system"""
@@ -313,13 +313,13 @@ class SettingsDialog(QDialog):
                 print(f"  Added printer: {printer_text}")
 
             if not printers:
-                self.printer_combo.addItem("No printers found")
+                self.printer_combo.addItem("Tidak ada printer ditemukan")
                 print("No printers detected")
 
         except Exception as e:
             print(f"Error loading printers: {e}")
             self.printer_combo.clear()
-            self.printer_combo.addItem("Error loading printers")
+            self.printer_combo.addItem("Kesalahan memuat printer")
 
     def refresh_cameras(self):
         """Refresh camera list"""
@@ -400,7 +400,7 @@ class SettingsDialog(QDialog):
 
             # Validate required fields
             if not save_path:
-                self.show_message_box("Validation Error", "Please select a save path for images.", QMessageBox.Icon.Warning)
+                self.show_message_box("Kesalahan Validasi", "Silakan pilih path simpan untuk gambar.", QMessageBox.Icon.Warning)
                 return
 
             # Save to database
@@ -412,12 +412,12 @@ class SettingsDialog(QDialog):
             success &= db_manager.set_app_config('capture_delay', capture_delay)
 
             if success:
-                self.show_message_box("Settings", "Settings saved successfully!", QMessageBox.Icon.Information)
+                self.show_message_box("Pengaturan", "Pengaturan berhasil disimpan!", QMessageBox.Icon.Information)
                 self.accept()
             else:
-                self.show_message_box("Error", "Failed to save some settings. Please try again.", QMessageBox.Icon.Critical)
+                self.show_message_box("Kesalahan", "Gagal menyimpan beberapa pengaturan. Silakan coba lagi.", QMessageBox.Icon.Critical)
         except Exception as e:
-            self.show_message_box("Error", f"An error occurred while saving settings: {str(e)}", QMessageBox.Icon.Critical)
+            self.show_message_box("Kesalahan", f"Terjadi kesalahan saat menyimpan pengaturan: {str(e)}", QMessageBox.Icon.Critical)
 
     def get_settings_stylesheet(self):
         return """
@@ -549,13 +549,13 @@ class AdminWindow(QWidget):
 
         # Header
         header_layout = QHBoxLayout()
-        title = QLabel("Admin Panel")
+        title = QLabel("Panel Admin")
         title.setAlignment(Qt.AlignmentFlag.AlignLeft)
         title.setObjectName("TitleLabel")
 
         # Settings and Logout buttons in header
         header_btn_layout = QHBoxLayout()
-        settings_btn = QPushButton("⚙️ Settings")
+        settings_btn = QPushButton("⚙️ Pengaturan")
         settings_btn.setObjectName("HeaderButton")
         settings_btn.clicked.connect(self.show_settings)
 
@@ -575,14 +575,14 @@ class AdminWindow(QWidget):
         employee_frame.setObjectName("SectionFrame")
         employee_layout = QVBoxLayout()
 
-        employee_title = QLabel("📋 Employee Management")
+        employee_title = QLabel("📋 Manajemen Karyawan")
         employee_title.setObjectName("SectionTitle")
 
         # Employee management buttons grid
         employee_grid = QGridLayout()
 
         # Row 1
-        self.show_list_btn = QPushButton("📄 Show List Data Employee")
+        self.show_list_btn = QPushButton("📄 Tampilkan Daftar Data Karyawan")
         self.show_list_btn.setObjectName("FunctionButton")
         self.show_list_btn.clicked.connect(self.show_employee_list)
 
@@ -597,17 +597,17 @@ class AdminWindow(QWidget):
         system_frame.setObjectName("SectionFrame")
         system_layout = QVBoxLayout()
 
-        system_title = QLabel("📊 System Information")
+        system_title = QLabel("📊 Informasi Sistem")
         system_title.setObjectName("SectionTitle")
 
         # System info display area (placeholder)
         info_layout = QGridLayout()
 
         info_items = [
-            ("Total Employees:", "0"),
-            ("Pending Renewals:", "0"),
-            ("Today's ID Cards Printed:", "0"),
-            ("System Status:", "Online")
+            ("Total Karyawan:", "0"),
+            ("Perpanjangan Tertunda:", "0"),
+            ("ID Card Dicetak Hari Ini:", "0"),
+            ("Status Sistem:", "Online")
         ]
 
         for i, (label_text, value_text) in enumerate(info_items):
@@ -644,11 +644,11 @@ class AdminWindow(QWidget):
 
     # Placeholder methods for button functions
     def show_employee_list(self):
-        dialog = CustomStyledDialog(self, "Feature", "Show Employee List feature will be implemented here.")
+        dialog = CustomStyledDialog(self, "Fitur", "Fitur Tampilkan Daftar Karyawan akan diimplementasikan di sini.")
         dialog.exec()
 
     def print_id_card(self):
-        dialog = CustomStyledDialog(self, "Feature", "Print ID Card feature will be implemented here.")
+        dialog = CustomStyledDialog(self, "Fitur", "Fitur Cetak ID Card akan diimplementasikan di sini.")
         dialog.exec()
 
     def get_stylesheet(self):

@@ -128,6 +128,7 @@ class LoginPage(QWidget):
         id_label = QLabel("ID Pengguna:")
         self.id_entry = QLineEdit(self)
         self.id_entry.setPlaceholderText("Masukkan ID Anda")
+        self.id_entry.setText("ADMIN001")
         self.id_entry.setMinimumHeight(40)
         container_layout.addWidget(id_label)
         container_layout.addWidget(self.id_entry)
@@ -138,6 +139,7 @@ class LoginPage(QWidget):
         self.password_entry.setPlaceholderText("Masukkan Password")
         self.password_entry.setEchoMode(QLineEdit.EchoMode.Password) # Sembunyikan karakter password
         self.password_entry.setMinimumHeight(40)
+        self.password_entry.setText("admin123")
         container_layout.addWidget(password_label)
         container_layout.addWidget(self.password_entry)
         self.password_entry.returnPressed.connect(self.check_login)
