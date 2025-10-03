@@ -142,11 +142,11 @@ def insert_sample_data():
     request_histories = [
         ('EMP001', 'Request for new ID card due to damage', 'completed', 'Card replaced successfully', 'Admin User'),
         ('EMP002', 'Request for photo retake', 'completed', 'Photo retaken and updated', 'Admin User'),
-        ('EMP003', 'Request for first-time ID card creation', 'pending', None, None),
+        ('EMP003', 'Request for first-time ID card creation', 'requested', None, None),
         ('EMP004', 'Request for card replacement', 'in_progress', 'Processing replacement', 'Admin User'),
         ('EMP005', 'Request for photo update', 'completed', 'Photo updated successfully', 'Admin User'),
         ('EMP001', 'Request for emergency card replacement', 'completed', 'Emergency card issued', 'Supervisor'),
-        ('EMP002', 'Request for card reprint', 'pending', None, None),
+        ('EMP002', 'Request for card reprint', 'requested', None, None),
         ('EMP004', 'Request for card information update', 'completed', 'Information updated', 'Admin User')
     ]
 
