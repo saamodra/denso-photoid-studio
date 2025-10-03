@@ -67,7 +67,7 @@ class PhotoThumbnail(QLabel):
 
         except Exception as e:
             print(f"Error loading thumbnail {self.photo_path}: {e}")
-            self.setText("Image\nLoad Error")
+            self.setText("Kesalahan\nMemuat Gambar")
 
     def get_style(self):
         """Get thumbnail style based on selection state"""
@@ -121,7 +121,7 @@ class SelectionWindow(QMainWindow):
 
     def init_ui(self):
         """Initialize user interface"""
-        self.setWindowTitle("Select Your Best Photo")
+        self.setWindowTitle("Pilih Foto Terbaik Anda")
         # Set to fullscreen by default
         self.showFullScreen()
 
@@ -133,7 +133,7 @@ class SelectionWindow(QMainWindow):
         main_layout = QVBoxLayout(central_widget)
 
         # Title
-        title = QLabel("Choose Your Best Photo")
+        title = QLabel("Pilih Foto Terbaik Anda")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("""
             QLabel {
@@ -172,7 +172,7 @@ class SelectionWindow(QMainWindow):
         layout = QVBoxLayout(frame)
 
         # Section title
-        title = QLabel("Captured Photos")
+        title = QLabel("Foto yang Diambil")
         title.setStyleSheet("""
             QLabel {
                 font-size: 16px;
@@ -207,7 +207,7 @@ class SelectionWindow(QMainWindow):
         layout = QVBoxLayout(frame)
 
         # Section title
-        title = QLabel("Preview")
+        title = QLabel("Pratinjau")
         title.setStyleSheet("""
             QLabel {
                 font-size: 16px;
@@ -231,7 +231,7 @@ class SelectionWindow(QMainWindow):
                 font-size: 14px;
             }
         """)
-        self.preview_label.setText("Click on a photo\nto see preview")
+        self.preview_label.setText("Klik pada foto\nuntuk melihat pratinjau")
         layout.addWidget(self.preview_label)
 
         # Photo info
@@ -254,17 +254,17 @@ class SelectionWindow(QMainWindow):
         layout = QHBoxLayout(frame)
 
         # Back button
-        self.back_button = QPushButton("← Back to Camera")
+        self.back_button = QPushButton("← Kembali ke Kamera")
         self.back_button.setMinimumHeight(50)
         self.back_button.clicked.connect(self.on_back_clicked)
 
         # Retake button
-        self.retake_button = QPushButton("📸 Retake Photos")
+        self.retake_button = QPushButton("📸 Ambil Foto Ulang")
         self.retake_button.setMinimumHeight(50)
         self.retake_button.clicked.connect(self.on_retake_clicked)
 
         # Next button
-        self.next_button = QPushButton("Next: Edit Photo →")
+        self.next_button = QPushButton("Selanjutnya: Edit Foto →")
         self.next_button.setMinimumHeight(50)
         self.next_button.setEnabled(False)
         self.next_button.clicked.connect(self.on_next_clicked)
@@ -298,7 +298,7 @@ class SelectionWindow(QMainWindow):
 
         # Add instruction label if no photos
         if not self.photo_paths:
-            no_photos_label = QLabel("No photos available\nGo back to take photos")
+            no_photos_label = QLabel("Tidak ada foto tersedia\nKembali untuk mengambil foto")
             no_photos_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             no_photos_label.setStyleSheet("""
                 QLabel {
@@ -365,8 +365,8 @@ class SelectionWindow(QMainWindow):
 
         except Exception as e:
             print(f"Error updating preview: {e}")
-            self.preview_label.setText("Preview\nUnavailable")
-            self.photo_info.setText("Error loading photo info")
+            self.preview_label.setText("Pratinjau\nTidak Tersedia")
+            self.photo_info.setText("Kesalahan memuat info foto")
             self.photo_info.setStyleSheet("QLabel { color: #e74c3c; font-size: 12px; }")
 
     def on_back_clicked(self):
@@ -431,6 +431,6 @@ class SelectionWindow(QMainWindow):
         self.photo_paths = photo_paths
         self.selected_photo = None
         self.next_button.setEnabled(False)
-        self.preview_label.setText("Click on a photo\nto see preview")
+        self.preview_label.setText("Klik pada foto\nuntuk melihat pratinjau")
         self.photo_info.setText("")
         self.load_photos()

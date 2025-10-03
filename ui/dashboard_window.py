@@ -284,7 +284,7 @@ class RequestDialog(QDialog):
 
                             # Explanation text
                             explanation_text = f"""
-                            Your last photo was taken on {last_take_dt.strftime('%Y-%m-%d %H:%M:%S')} ({days_ago} days ago). According to company policy, you can only take a new ID photo once per year. Since your last photo was taken less than a year ago, you need to request permission from the administrator to take a new photo.  Please provide a valid reason for your request below.
+                            Foto terakhir Anda diambil pada {last_take_dt.strftime('%Y-%m-%d %H:%M:%S')} ({days_ago} hari yang lalu). Menurut kebijakan perusahaan, Anda hanya dapat mengambil foto ID baru sekali dalam setahun. Karena foto terakhir Anda diambil kurang dari setahun yang lalu, Anda perlu meminta izin dari administrator untuk mengambil foto baru. Silakan berikan alasan yang valid untuk permintaan Anda di bawah ini.
                             """
 
                             explanation_label = QLabel(explanation_text.strip())

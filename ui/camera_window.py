@@ -177,7 +177,7 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         """Initialize user interface"""
-        self.setWindowTitle("ID Card Photo Machine")
+        self.setWindowTitle("Mesin Foto ID Card Denso")
         # Set to fullscreen by default
         self.showFullScreen()
 
@@ -235,7 +235,7 @@ class MainWindow(QMainWindow):
 
             if not camera_found:
                 # Camera not found, show error
-                self.camera_error_label.setText(f"⚠️ Configured camera '{default_camera}' is not available. Please contact admin to update camera settings.")
+                self.camera_error_label.setText(f"⚠️ Kamera yang dikonfigurasi '{default_camera}' tidak tersedia. Silakan hubungi admin untuk memperbarui pengaturan kamera.")
                 self.camera_error_label.show()
             else:
                 # Camera is available, hide error
@@ -251,9 +251,9 @@ class MainWindow(QMainWindow):
         try:
             default_camera = db_manager.get_app_config('default_camera')
             if not default_camera:
-                self.camera_status.setText("Camera: No camera configured")
-                self.camera_label.setText("No Camera Configured\nPlease contact admin to configure camera")
-                self.camera_error_label.setText("⚠️ No camera configured. Please contact admin to set up camera.")
+                self.camera_status.setText("Kamera: Tidak ada kamera yang dikonfigurasi")
+                self.camera_label.setText("Tidak Ada Kamera Dikonfigurasi\nSilakan hubungi admin untuk mengkonfigurasi kamera")
+                self.camera_error_label.setText("⚠️ Tidak ada kamera yang dikonfigurasi. Silakan hubungi admin untuk mengatur kamera.")
                 self.camera_error_label.show()
                 return False
 
@@ -270,23 +270,23 @@ class MainWindow(QMainWindow):
 
             if not camera_found:
                 # Camera not found, show error
-                self.camera_status.setText(f"Camera: '{default_camera}' not available")
-                self.camera_label.setText(f"Camera Error\n'{default_camera}' not available\nPlease contact admin to update camera settings")
-                self.camera_error_label.setText(f"⚠️ Configured camera '{default_camera}' is not available. Please contact admin to update camera settings.")
+                self.camera_status.setText(f"Kamera: '{default_camera}' tidak tersedia")
+                self.camera_label.setText(f"Kesalahan Kamera\n'{default_camera}' tidak tersedia\nSilakan hubungi admin untuk memperbarui pengaturan kamera")
+                self.camera_error_label.setText(f"⚠️ Kamera yang dikonfigurasi '{default_camera}' tidak tersedia. Silakan hubungi admin untuk memperbarui pengaturan kamera.")
                 self.camera_error_label.show()
                 return False
             else:
                 # Camera found, select it
                 self.camera_manager.switch_camera(camera_index)
-                self.camera_status.setText(f"Camera: {default_camera} (Ready)")
+                self.camera_status.setText(f"Kamera: {default_camera} (Siap)")
                 self.camera_error_label.hide()
                 return True
 
         except Exception as e:
             print(f"Error auto-selecting camera from database: {e}")
-            self.camera_status.setText("Camera: Error loading configuration")
-            self.camera_label.setText("Camera Error\nError loading camera configuration\nPlease contact admin")
-            self.camera_error_label.setText(f"Error loading camera configuration: {str(e)}")
+            self.camera_status.setText("Kamera: Kesalahan memuat konfigurasi")
+            self.camera_label.setText("Kesalahan Kamera\nKesalahan memuat konfigurasi kamera\nSilakan hubungi admin")
+            self.camera_error_label.setText(f"Kesalahan memuat konfigurasi kamera: {str(e)}")
             self.camera_error_label.show()
             return False
 
@@ -297,23 +297,23 @@ class MainWindow(QMainWindow):
             cameras = self.camera_manager.get_available_cameras()
 
             if not default_camera:
-                self.camera_info_label.setText("No camera configured\nContact admin to set up camera")
+                self.camera_info_label.setText("Tidak ada kamera yang dikonfigurasi\nHubungi admin untuk mengatur kamera")
                 return
 
             # Find the configured camera
             camera_found = False
             for camera in cameras:
                 if default_camera.lower() in camera['name'].lower():
-                    self.camera_info_label.setText(f"Configured Camera:\n{camera['name']}\nResolution: {camera['resolution'][0]}x{camera['resolution'][1]}")
+                    self.camera_info_label.setText(f"Kamera yang Dikonfigurasi:\n{camera['name']}\nResolusi: {camera['resolution'][0]}x{camera['resolution'][1]}")
                     camera_found = True
                     break
 
             if not camera_found:
-                self.camera_info_label.setText(f"Configured Camera:\n{default_camera}\n(Not Available)")
+                self.camera_info_label.setText(f"Kamera yang Dikonfigurasi:\n{default_camera}\n(Tidak Tersedia)")
 
         except Exception as e:
             print(f"Error updating camera info display: {e}")
-            self.camera_info_label.setText("Error loading camera information")
+            self.camera_info_label.setText("Kesalahan memuat informasi kamera")
 
     def create_camera_section(self):
         """Create camera preview section"""
@@ -349,7 +349,7 @@ class MainWindow(QMainWindow):
             }
         """)
         self.camera_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.camera_label.setText("Camera Preview\nLoading...")
+        self.camera_label.setText("Pratinjau Kamera\nMemuat...")
 
         self.camera_container_layout.addWidget(self.camera_label)
 
@@ -409,7 +409,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.camera_container)
 
         # Capture button
-        self.capture_button = QPushButton("📸 Take Photos")
+        self.capture_button = QPushButton("📸 Ambil Foto")
         self.capture_button.setMinimumHeight(60)
         self.capture_button.setStyleSheet("""
             QPushButton {
@@ -445,7 +445,7 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(control_frame)
 
         # Title
-        title = QLabel("Camera Controls")
+        title = QLabel("Kontrol Kamera")
         title.setStyleSheet("""
             QLabel {
                 font-size: 18px;
@@ -479,11 +479,11 @@ class MainWindow(QMainWindow):
 
     def create_user_info_group(self):
         """Create user information display group"""
-        group = QGroupBox("Current User")
+        group = QGroupBox("Pengguna Saat Ini")
         layout = QVBoxLayout(group)
 
         # User info labels
-        self.user_name_label = QLabel("Not logged in")
+        self.user_name_label = QLabel("Belum login")
         self.user_npk_label = QLabel("")
         self.user_role_label = QLabel("")
         self.user_department_label = QLabel("")
@@ -515,7 +515,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.user_department_label)
 
         # Logout button
-        logout_btn = QPushButton("Logout")
+        logout_btn = QPushButton("Keluar")
         logout_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c;
@@ -556,7 +556,7 @@ class MainWindow(QMainWindow):
                 self.user_role_label.setText(f"Role: {current_user.get('role', 'N/A').title()}")
                 self.user_department_label.setText(f"Dept: {current_user.get('department_name', 'N/A')}")
             else:
-                self.user_name_label.setText("Not logged in")
+                self.user_name_label.setText("Belum login")
                 self.user_npk_label.setText("")
                 self.user_role_label.setText("")
                 self.user_department_label.setText("")
@@ -565,9 +565,9 @@ class MainWindow(QMainWindow):
         """Handle logout request"""
         dialog = CustomStyledDialog(
             self,
-            'Logout Confirmation',
-            'Are you sure you want to logout?',
-            [("No", QDialog.DialogCode.Rejected), ("Yes", QDialog.DialogCode.Accepted)]
+            'Konfirmasi Keluar',
+            'Apakah Anda yakin ingin keluar?',
+            [("Tidak", QDialog.DialogCode.Rejected), ("Ya", QDialog.DialogCode.Accepted)]
         )
         dialog.set_cancel_button(0)  # "No" button as cancel
 
@@ -577,11 +577,11 @@ class MainWindow(QMainWindow):
 
     def create_camera_selection_group(self):
         """Create camera selection group - removed, camera is auto-selected from database"""
-        group = QGroupBox("Camera Information")
+        group = QGroupBox("Informasi Kamera")
         layout = QVBoxLayout(group)
 
         # Camera info label (readonly)
-        self.camera_info_label = QLabel("Loading camera information...")
+        self.camera_info_label = QLabel("Memuat informasi kamera...")
         self.camera_info_label.setStyleSheet("""
             QLabel {
                 color: #2c3e50;
@@ -600,11 +600,11 @@ class MainWindow(QMainWindow):
 
     def create_capture_settings_group(self):
         """Create capture settings group"""
-        group = QGroupBox("Capture Settings")
+        group = QGroupBox("Pengaturan Pengambilan")
         layout = QGridLayout(group)
 
         # Number of photos
-        photos_label = QLabel("Photos to take:")
+        photos_label = QLabel("Jumlah foto:")
         photos_label.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; }")
         layout.addWidget(photos_label, 0, 0)
         self.photo_count_spin = QSpinBox()
@@ -623,7 +623,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.photo_count_spin, 0, 1)
 
         # Delay between photos
-        delay_label = QLabel("Delay (seconds):")
+        delay_label = QLabel("Jeda (detik):")
         delay_label.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; }")
         layout.addWidget(delay_label, 1, 0)
         self.delay_spin = QSpinBox()
@@ -649,7 +649,7 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(group)
 
         # Camera status
-        self.camera_status = QLabel("Camera: Initializing...")
+        self.camera_status = QLabel("Kamera: Memulai...")
         self.camera_status.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; }")
         layout.addWidget(self.camera_status)
 
@@ -676,7 +676,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.progress_bar)
 
         # Photo counter
-        self.photo_counter = QLabel("Photos captured: 0")
+        self.photo_counter = QLabel("Foto diambil: 0")
         self.photo_counter.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; }")
         layout.addWidget(self.photo_counter)
 
@@ -732,7 +732,7 @@ class MainWindow(QMainWindow):
 
             print("Attempting to start camera preview...")
             self.camera_manager.start_preview(self.update_camera_frame)
-            self.camera_status.setText("Camera: Starting...")
+            self.camera_status.setText("Kamera: Memulai...")
             print("Camera preview start command sent")
 
             # Set a timer to check if preview actually started
@@ -740,20 +740,20 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             print(f"Error in start_camera_preview: {e}")
-            self.camera_status.setText("Camera: Error")
-            self.camera_label.setText("Camera Error\nError starting camera preview\nPlease contact admin")
+            self.camera_status.setText("Kamera: Kesalahan")
+            self.camera_label.setText("Kesalahan Kamera\nKesalahan memulai pratinjau kamera\nSilakan hubungi admin")
 
     def check_camera_status(self):
         """Check if camera preview is actually working"""
         if hasattr(self.camera_manager, 'camera_thread') and self.camera_manager.camera_thread:
             if self.camera_manager.camera_thread.isRunning():
-                self.camera_status.setText("Camera: Active")
+                self.camera_status.setText("Kamera: Aktif")
                 print("Camera preview confirmed active")
             else:
-                self.camera_status.setText("Camera: Failed to start")
+                self.camera_status.setText("Kamera: Gagal memulai")
                 print("Camera preview failed to start")
         else:
-            self.camera_status.setText("Camera: Not initialized")
+            self.camera_status.setText("Kamera: Belum diinisialisasi")
             print("Camera thread not created")
 
     def update_camera_frame(self, frame):
@@ -821,7 +821,7 @@ class MainWindow(QMainWindow):
         self.delay_overlay.hide()
 
         # Show capture overlay
-        self.capture_overlay.setText(f"📸 CAPTURING\nPhoto {current}/{total}")
+        self.capture_overlay.setText(f"📸 MENGAMBIL FOTO\nFoto {current}/{total}")
         self.capture_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
         self.capture_overlay.show()
         self.capture_overlay.raise_()
@@ -837,7 +837,7 @@ class MainWindow(QMainWindow):
     def on_delay_countdown(self, current, total, remaining):
         """Handle delay countdown between photos"""
         # Show delay overlay
-        self.delay_overlay.setText(f"⏱️ DELAY\nNext photo in {remaining}s\nPhoto {current}/{total}")
+        self.delay_overlay.setText(f"⏱️ JEDA\nFoto berikutnya dalam {remaining}s\nFoto {current}/{total}")
         self.delay_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
         self.delay_overlay.show()
         self.delay_overlay.raise_()
@@ -846,7 +846,7 @@ class MainWindow(QMainWindow):
     def on_photo_captured(self, current, total, photo_path):
         """Handle individual photo captured"""
         self.progress_bar.setValue(current)
-        self.photo_counter.setText(f"Photos captured: {current}/{total}")
+        self.photo_counter.setText(f"Foto diambil: {current}/{total}")
         print(f"Photo {current}/{total} captured: {os.path.basename(photo_path) if photo_path else 'Failed'}")
 
     def on_capture_complete(self, captured_paths):
@@ -863,7 +863,7 @@ class MainWindow(QMainWindow):
         self.progress_bar.hide()
 
         # Update final counter
-        self.photo_counter.setText(f"Photos captured: {len(captured_paths)}")
+        self.photo_counter.setText(f"Foto diambil: {len(captured_paths)}")
 
         # Emit signal with captured photos
         if captured_paths:
