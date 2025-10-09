@@ -366,7 +366,7 @@ class EmployeeListPage(QWidget):
 
             # Kolom Aksi dengan Tombol
             detail_button = QPushButton("📃")
-            detail_button.clicked.connect(lambda ch, npk=employee.get("npk"): self.show_employee_detail(employee))
+            detail_button.clicked.connect(lambda ch, employee=employee: self.show_employee_detail(employee))
 
             # Kolom Aksi dengan Tombol
             confirmation_button = QPushButton("✅")

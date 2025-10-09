@@ -651,9 +651,6 @@ class AdminWindow(QWidget):
         # dialog = CustomStyledDialog(self, "Feature", "Show Employee List feature will be implemented here.")
         # dialog.exec()
         self.show_employee_list.emit()
-    def show_employee_list(self):
-        dialog = CustomStyledDialog(self, "Fitur", "Fitur Tampilkan Daftar Karyawan akan diimplementasikan di sini.")
-        dialog.exec()
 
     def print_id_card(self):
         dialog = CustomStyledDialog(self, "Fitur", "Fitur Cetak ID Card akan diimplementasikan di sini.")

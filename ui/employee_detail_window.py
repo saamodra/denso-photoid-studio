@@ -8,8 +8,6 @@ from PyQt6.QtGui import QFont, QPixmap
 
 from modules.database import db_manager
 
-from config import PROCESSED_DIR 
-
 class EmployeeDetailPage(QDialog):
     """
     Jendela dialog untuk menampilkan rincian data seorang karyawan,
@@ -176,14 +174,13 @@ class EmployeeDetailPage(QDialog):
         photo_filename = self.employee_data.get("photo_filename")
         if photo_filename:
             # Ganti PHOTOS_DIR dengan path folder foto asli Anda
-            photo_path = os.path.join(self.PHOTOS_DIR, photo_filename)
+            photo_path = os.path.join(self.PHOTOS_DIR, f"original/{photo_filename}")
             self.set_image_preview(self.original_photo_label, photo_path)
 
         # Muat gambar kartu ID
         card_filename = self.employee_data.get("card_filename")
         if card_filename:
-            # Ganti PROCESSED_DIR dengan path folder kartu ID Anda
-            card_path = os.path.join(PROCESSED_DIR, card_filename)
+            card_path = os.path.join(self.PHOTOS_DIR, f"card/{card_filename}")
             self.set_image_preview(self.card_photo_label, card_path)
 
     def set_image_preview(self, label_widget, image_path):
