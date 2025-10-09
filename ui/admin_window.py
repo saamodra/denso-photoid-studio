@@ -12,6 +12,87 @@ from modules.print_manager import PrintManager
 from ui.dialogs.custom_dialog import CustomStyledDialog
 
 
+class CustomStyledDialog(QDialog):
+    """Custom dialog with consistent styling matching the logout confirmation"""
+
+
+    def __init__(self, parent=None, title="", message="", buttons=None, icon_type="info"):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setModal(True)
+        self.setFixedSize(400, 200)
+
+        # Main layout
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+
+        # Message label
+        self.message_label = QLabel(message)
+        self.message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.message_label.setWordWrap(True)
+        layout.addWidget(self.message_label)
+
+        # Button layout
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
+
+        if buttons is None:
+            buttons = [("OK", QDialog.DialogCode.Accepted)]
+
+        self.buttons = []
+        for text, role in buttons:
+            btn = QPushButton(text)
+            btn.clicked.connect(lambda checked, r=role: self.done(r))
+            button_layout.addWidget(btn)
+            self.buttons.append(btn)
+
+        layout.addLayout(button_layout)
+
+        # Apply consistent styling
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #FFFFFF;
+                color: #333333;
+            }
+            QLabel {
+                background-color: #FFFFFF;
+                color: #333333;
+                font-size: 14px;
+                padding: 10px;
+            }
+            QPushButton {
+                background-color: #E60012;
+                color: #FFFFFF;
+                font-weight: bold;
+                font-size: 14px;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 20px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #CC0010;
+            }
+            QPushButton:pressed {
+                background-color: #99000C;
+            }
+            QPushButton#cancelButton {
+                background-color: #6c757d;
+            }
+            QPushButton#cancelButton:hover {
+                background-color: #5a6268;
+            }
+            QPushButton#cancelButton:pressed {
+                background-color: #495057;
+            }
+        """)
+
+    def set_cancel_button(self, button_index=0):
+        """Set a button as cancel button for different styling"""
+        if 0 <= button_index < len(self.buttons):
+            self.buttons[button_index].setObjectName("cancelButton")
+
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -455,6 +536,8 @@ class SettingsDialog(QDialog):
 
 class AdminWindow(QWidget):
     logout_requested = pyqtSignal()
+    show_employee_list = pyqtSignal()  # Emit user data on successful login
+
 
     def __init__(self):
         super().__init__()
@@ -505,7 +588,7 @@ class AdminWindow(QWidget):
         # Row 1
         self.show_list_btn = QPushButton("📄 Tampilkan Daftar Data Karyawan")
         self.show_list_btn.setObjectName("FunctionButton")
-        self.show_list_btn.clicked.connect(self.show_employee_list)
+        self.show_list_btn.clicked.connect(self.handle_show_list)
 
         employee_grid.addWidget(self.show_list_btn, 0, 0)
 
@@ -564,6 +647,10 @@ class AdminWindow(QWidget):
         self.logout_requested.emit()
 
     # Placeholder methods for button functions
+    def handle_show_list(self):
+        # dialog = CustomStyledDialog(self, "Feature", "Show Employee List feature will be implemented here.")
+        # dialog.exec()
+        self.show_employee_list.emit()
     def show_employee_list(self):
         dialog = CustomStyledDialog(self, "Fitur", "Fitur Tampilkan Daftar Karyawan akan diimplementasikan di sini.")
         dialog.exec()
@@ -682,5 +769,6 @@ class AdminWindow(QWidget):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = AdminWindow()
+    window.showFullScreen()  # tampilkan dalam mode full screen
     window.show()
     sys.exit(app.exec())

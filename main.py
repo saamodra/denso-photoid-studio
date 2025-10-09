@@ -43,6 +43,7 @@ class IDCardPhotoApp:
         self.role_selection_window = None
         self.dashboard_window = None
         self.admin_window = None
+        self.employee_list_window = None
         self.camera_window = None
         self.selection_window = None
         self.processing_window = None
@@ -255,21 +256,24 @@ class IDCardPhotoApp:
             else:
                 # Create new admin window
                 self.admin_window = AdminWindow()
-                self.admin_window.logout_requested.connect(self.logout)
+                self.admin_window.logout_requested.connect(self.show_role_selection_window) # keluar dari admin, masuk ke pilih role lagi
+                self.admin_window.show_employee_list.connect(self.show_employee_list_window)
 
                 # Ensure window appears on screen
                 self.admin_window.show()
                 self.admin_window.raise_()  # Bring to front
                 self.admin_window.activateWindow()  # Activate window
-
-                # Force window to center and be visible
-                screen = self.app.primaryScreen()
-                if screen:
-                    screen_geometry = screen.availableGeometry()
-                    window_geometry = self.admin_window.geometry()
-                    x = (screen_geometry.width() - window_geometry.width()) // 2
-                    y = (screen_geometry.height() - window_geometry.height()) // 2
-                    self.admin_window.move(x, y)
+                
+            # Di keluarin dari else, supaya full screen pasti
+            # 
+            #  Force window to center and be visible
+            screen = self.app.primaryScreen()
+            if screen:
+                screen_geometry = screen.availableGeometry()
+                window_geometry = self.admin_window.geometry()
+                x = (screen_geometry.width() - window_geometry.width()) // 2
+                y = (screen_geometry.height() - window_geometry.height()) // 2
+                self.admin_window.move(x, y)
 
             # Close current window
             if self.current_window:
@@ -283,6 +287,51 @@ class IDCardPhotoApp:
         except Exception as e:
             print(f"❌ Error showing admin window: {e}")
             self.show_error_dialog("Admin Error", f"Failed to show admin window:\n{str(e)}")
+
+    def show_employee_list_window(self):
+        """Show admin Employee List"""
+        try:
+            from ui.employee_list_window import EmployeeListPage
+
+            if self.employee_list_window:
+                # If admin Employee List exists, just show it
+                self.employee_list_window.show()
+                self.employee_list_window.raise_()  # Bring to front
+                self.employee_list_window.activateWindow()  # Activate window
+            else:
+                # Create new admin Employee List
+                self.employee_list_window = EmployeeListPage()
+                self.employee_list_window.back_button_click.connect(self.show_admin_window) # keluar dari employee list masuk ke admin
+                # self.employee_list_window.show_employee_list.connect(self.show_employee_list_window)
+
+                # Ensure window appears on screen
+                self.employee_list_window.show()
+                self.employee_list_window.raise_()  # Bring to front
+                self.employee_list_window.activateWindow()  # Activate window
+                
+            # Di keluarin dari else, supaya full screen pasti
+            # 
+            #  Force window to center and be visible
+            screen = self.app.primaryScreen()
+            if screen:
+                screen_geometry = screen.availableGeometry()
+                window_geometry = self.employee_list_window.geometry()
+                x = (screen_geometry.width() - window_geometry.width()) // 2
+                y = (screen_geometry.height() - window_geometry.height()) // 2
+                self.employee_list_window.move(x, y)
+
+            # Close current window
+            if self.current_window:
+                self.current_window.hide()
+
+            self.current_window = self.employee_list_window
+            print(f"✅ Admin Employee List shown at position: {self.employee_list_window.x()}, {self.employee_list_window.y()}")
+            print(f"✅ Window size: {self.employee_list_window.width()}x{self.employee_list_window.height()}")
+            print(f"✅ Window visible: {self.employee_list_window.isVisible()}")
+
+        except Exception as e:
+            print(f"❌ Error showing admin Employee List: {e}")
+            self.show_error_dialog("Admin Error", f"Failed to show admin Employee List:\n{str(e)}")
 
     def show_camera_window(self):
         """Show camera window"""
