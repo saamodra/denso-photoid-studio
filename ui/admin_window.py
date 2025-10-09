@@ -14,6 +14,7 @@ from modules.print_manager import PrintManager
 class CustomStyledDialog(QDialog):
     """Custom dialog with consistent styling matching the logout confirmation"""
 
+
     def __init__(self, parent=None, title="", message="", buttons=None, icon_type="info"):
         super().__init__(parent)
         self.setWindowTitle(title)
@@ -534,6 +535,8 @@ class SettingsDialog(QDialog):
 
 class AdminWindow(QWidget):
     logout_requested = pyqtSignal()
+    show_employee_list = pyqtSignal()  # Emit user data on successful login
+
 
     def __init__(self):
         super().__init__()
@@ -584,7 +587,7 @@ class AdminWindow(QWidget):
         # Row 1
         self.show_list_btn = QPushButton("📄 Show List Data Employee")
         self.show_list_btn.setObjectName("FunctionButton")
-        self.show_list_btn.clicked.connect(self.show_employee_list)
+        self.show_list_btn.clicked.connect(self.handle_show_list)
 
         employee_grid.addWidget(self.show_list_btn, 0, 0)
 
@@ -643,9 +646,10 @@ class AdminWindow(QWidget):
         self.logout_requested.emit()
 
     # Placeholder methods for button functions
-    def show_employee_list(self):
-        dialog = CustomStyledDialog(self, "Feature", "Show Employee List feature will be implemented here.")
-        dialog.exec()
+    def handle_show_list(self):
+        # dialog = CustomStyledDialog(self, "Feature", "Show Employee List feature will be implemented here.")
+        # dialog.exec()
+        self.show_employee_list.emit()
 
     def print_id_card(self):
         dialog = CustomStyledDialog(self, "Feature", "Print ID Card feature will be implemented here.")
@@ -761,5 +765,6 @@ class AdminWindow(QWidget):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = AdminWindow()
+    window.showFullScreen()  # tampilkan dalam mode full screen
     window.show()
     sys.exit(app.exec())
