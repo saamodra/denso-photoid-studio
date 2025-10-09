@@ -165,7 +165,7 @@ class ProcessingWindow(QMainWindow):
 
     def init_ui(self):
         """Initialize user interface"""
-        self.setWindowTitle("Background Processing")
+        self.setWindowTitle("Pemrosesan Background")
         # Set to fullscreen by default
         self.showFullScreen()
 
@@ -177,7 +177,7 @@ class ProcessingWindow(QMainWindow):
         main_layout = QVBoxLayout(central_widget)
 
         # Title
-        title = QLabel("Remove Background & Apply ID Card Background")
+        title = QLabel("Hapus Background & Terapkan Background ID Card")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("""
             QLabel {
@@ -230,7 +230,7 @@ class ProcessingWindow(QMainWindow):
         before_section_layout.setContentsMargins(0, 0, 0, 0)
 
         # Original title
-        before_title = QLabel("Original")
+        before_title = QLabel("Asli")
         before_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         before_title.setStyleSheet("""
             QLabel {
@@ -262,7 +262,7 @@ class ProcessingWindow(QMainWindow):
         after_section_layout.setContentsMargins(0, 0, 0, 0)
 
         # Processed title
-        after_title = QLabel("Processed")
+        after_title = QLabel("Diproses")
         after_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         after_title.setStyleSheet("""
             QLabel {
@@ -286,7 +286,7 @@ class ProcessingWindow(QMainWindow):
                 color: #7f8c8d;
             }
         """)
-        self.processed_label.setText("Click 'Process Photo'\nto see result")
+        self.processed_label.setText("Klik 'Proses Foto'\nuntuk melihat hasil")
         after_section_layout.addWidget(self.processed_label)
 
         content_layout.addWidget(before_section)
@@ -303,7 +303,7 @@ class ProcessingWindow(QMainWindow):
         layout = QVBoxLayout(frame)
 
         # Title - aligned with other section titles
-        title = QLabel("Background Options")
+        title = QLabel("Pilihan Background")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("""
             QLabel {
@@ -326,7 +326,7 @@ class ProcessingWindow(QMainWindow):
         layout.addWidget(self.backgrounds_container)
 
         # Process button
-        self.process_button = QPushButton("🎨 Process Photo")
+        self.process_button = QPushButton("🎨 Proses Foto")
         self.process_button.setMinimumHeight(50)
         self.process_button.clicked.connect(self.process_photo)
         layout.addWidget(self.process_button)
@@ -338,7 +338,7 @@ class ProcessingWindow(QMainWindow):
         frame = QFrame()
         layout = QVBoxLayout(frame)
 
-        self.progress_label = QLabel("Ready to process")
+        self.progress_label = QLabel("Siap untuk diproses")
         self.progress_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.progress_label.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; font-size: 14px; }")
         layout.addWidget(self.progress_label)
@@ -355,17 +355,17 @@ class ProcessingWindow(QMainWindow):
         layout = QHBoxLayout(frame)
 
         # Back button
-        self.back_button = QPushButton("← Back to Selection")
+        self.back_button = QPushButton("← Kembali ke Pilihan")
         self.back_button.setMinimumHeight(50)
         self.back_button.clicked.connect(self.on_back_clicked)
 
         # Reset button
-        self.reset_button = QPushButton("🔄 Reset")
+        self.reset_button = QPushButton("🔄 Ulangi")
         self.reset_button.setMinimumHeight(50)
         self.reset_button.clicked.connect(self.reset_processing)
 
         # Next button
-        self.next_button = QPushButton("Next: Print Preview →")
+        self.next_button = QPushButton("Selanjutnya: Pratinjau Cetak →")
         self.next_button.setMinimumHeight(50)
         self.next_button.setEnabled(False)
         self.next_button.clicked.connect(self.on_next_clicked)
@@ -460,7 +460,7 @@ class ProcessingWindow(QMainWindow):
         # Show progress
         self.progress_bar.show()
         self.progress_bar.setValue(0)
-        self.progress_label.setText("Processing photo...")
+        self.progress_label.setText("Memproses foto...")
         self.process_button.setEnabled(False)
 
         # Start processing thread
@@ -487,7 +487,7 @@ class ProcessingWindow(QMainWindow):
 
         # Hide progress and enable buttons
         self.progress_bar.hide()
-        self.progress_label.setText("Processing complete!")
+        self.progress_label.setText("Pemrosesan selesai!")
         self.process_button.setEnabled(True)
         self.next_button.setEnabled(True)
 
@@ -499,7 +499,7 @@ class ProcessingWindow(QMainWindow):
         self.progress_bar.hide()
         self.progress_label.setText(f"Error: {error_message}")
         self.process_button.setEnabled(True)
-        self.processed_label.setText(f"Processing Error:\n{error_message}")
+        self.processed_label.setText(f"Kesalahan Pemrosesan:\n{error_message}")
 
     def display_processed_image(self, image):
         """Display processed image"""
@@ -529,14 +529,14 @@ class ProcessingWindow(QMainWindow):
 
         except Exception as e:
             print(f"Error displaying processed image: {e}")
-            self.processed_label.setText("Error displaying\nprocessed image")
+            self.processed_label.setText("Kesalahan menampilkan\nfoto yang diproses")
 
     def reset_processing(self):
         """Reset to original image"""
         self.processed_image = None
         self.next_button.setEnabled(False)
-        self.progress_label.setText("Ready to process")
-        self.processed_label.setText("Click 'Process Photo'\nto see result")
+        self.progress_label.setText("Siap untuk diproses")
+        self.processed_label.setText("Klik 'Proses Foto'\nuntuk melihat hasil")
 
     def on_back_clicked(self):
         """Handle back button click"""

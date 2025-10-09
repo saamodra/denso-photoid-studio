@@ -252,16 +252,16 @@ class DatabaseManager:
             logger.error(f"Failed to add photo history: {e}")
             return False
 
-    def add_request_history(self, npk: str, request_desc: str, status: str = "pending",
-                          remark: str = None, respons_name: str = None) -> bool:
+    def add_request_history(self, npk: str, request_desc: str, status: str = "requested",
+                          remark: str = None, respons_name: str = None, respons_time: datetime = None) -> bool:
         """Add request history record"""
         try:
             request_time = datetime.now()
             query = """
-                INSERT INTO request_histories (npk, request_time, request_desc, status, remark, respons_name)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO request_histories (npk, request_time, request_desc, status, remark, respons_name, respons_time)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             """
-            self.execute_update(query, (npk, request_time, request_desc, status, remark, respons_name))
+            self.execute_update(query, (npk, request_time, request_desc, status, remark, respons_name, respons_time))
             return True
         except Exception as e:
             logger.error(f"Failed to add request history: {e}")
@@ -284,6 +284,22 @@ class DatabaseManager:
                 (npk,)
             )
         return self.execute_query("SELECT * FROM request_histories ORDER BY request_time DESC")
+
+    def get_latest_active_request(self, npk: str) -> Optional[Dict[str, Any]]:
+        """Get the latest active request (status: 'requested') for a user"""
+        results = self.execute_query(
+            "SELECT * FROM request_histories WHERE npk = ? AND status = 'requested' ORDER BY request_time DESC LIMIT 1",
+            (npk,)
+        )
+        return results[0] if results else None
+
+    def get_latest_request(self, npk: str) -> Optional[Dict[str, Any]]:
+        """Get the latest request for a user (any status)"""
+        results = self.execute_query(
+            "SELECT * FROM request_histories WHERE npk = ? ORDER BY request_time DESC LIMIT 1",
+            (npk,)
+        )
+        return results[0] if results else None
 
     def get_app_config(self, name: str) -> Optional[str]:
         """Get application configuration value"""

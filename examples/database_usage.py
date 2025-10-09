@@ -82,10 +82,10 @@ def example_request_histories():
     for status, count in status_counts.items():
         print(f"  - {status}: {count}")
 
-    # Show pending requests
-    pending_requests = [req for req in request_histories if req['status'] == 'pending']
-    print(f"\nPending requests: {len(pending_requests)}")
-    for req in pending_requests:
+    # Show requested requests
+    requested_requests = [req for req in request_histories if req['status'] == 'requested']
+    print(f"\nRequested requests: {len(requested_requests)}")
+    for req in requested_requests:
         print(f"  - {req['npk']}: {req['request_desc']}")
 
 def example_app_config():
@@ -140,7 +140,7 @@ def example_adding_new_data():
         if db_manager.add_request_history(
             user_npk,
             "Example request from script",
-            "pending",
+            "requested",
             "This is an example request"
         ):
             print("✓ Request added successfully")

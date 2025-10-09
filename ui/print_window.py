@@ -35,7 +35,7 @@ class PrintThread(QThread):
     def run(self):
         """Run printing operation"""
         try:
-            self.status_update.emit("Preparing image for printing...")
+            self.status_update.emit("Mempersiapkan gambar untuk dicetak...")
             self.progress_update.emit(20)
 
             # Prepare image
@@ -44,7 +44,7 @@ class PrintThread(QThread):
             )
             self.progress_update.emit(50)
 
-            self.status_update.emit("Sending to printer...")
+            self.status_update.emit("Mengirim ke printer...")
 
             # Print based on method
             if self.print_method == 'qt':
@@ -57,14 +57,14 @@ class PrintThread(QThread):
             self.progress_update.emit(100)
 
             if success:
-                self.status_update.emit("Print job sent successfully!")
+                self.status_update.emit("Pekerjaan cetak berhasil dikirim!")
             else:
-                self.status_update.emit("Print job failed")
+                self.status_update.emit("Pekerjaan cetak gagal")
 
             self.print_complete.emit(success)
 
         except Exception as e:
-            self.status_update.emit(f"Print error: {str(e)}")
+            self.status_update.emit(f"Kesalahan cetak: {str(e)}")
             self.print_complete.emit(False)
 
 
@@ -88,7 +88,7 @@ class PrintWindow(QMainWindow):
 
     def init_ui(self):
         """Initialize user interface"""
-        self.setWindowTitle("Print Preview")
+        self.setWindowTitle("Pratinjau Cetak")
         # Set to fullscreen by default
         self.showFullScreen()
 
@@ -111,7 +111,7 @@ class PrintWindow(QMainWindow):
         right_layout.setSpacing(10)
 
         # Title
-        title = QLabel("Print Preview - ID Card")
+        title = QLabel("Pratinjau Cetak - ID Card")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("""
             QLabel {
@@ -153,7 +153,7 @@ class PrintWindow(QMainWindow):
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center the entire content
 
         # Section title
-        title = QLabel("Print Preview")
+        title = QLabel("Pratinjau Cetak")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center the title
         title.setStyleSheet("""
             QLabel {
@@ -212,7 +212,7 @@ class PrintWindow(QMainWindow):
         layout.setSpacing(10)
 
         # Title
-        title = QLabel("Print Settings")
+        title = QLabel("Pengaturan Cetak")
         title.setStyleSheet("""
             QLabel {
                 font-size: 16px;
@@ -232,7 +232,7 @@ class PrintWindow(QMainWindow):
         layout.addWidget(copy_group)
 
         # Refresh button
-        refresh_btn = QPushButton("🔄 Refresh Printers")
+        refresh_btn = QPushButton("🔄 Segarkan Printer")
         refresh_btn.clicked.connect(self.refresh_printers)
         layout.addWidget(refresh_btn)
 
@@ -248,7 +248,7 @@ class PrintWindow(QMainWindow):
         layout.setSpacing(5)
 
         # Printer info display (readonly)
-        self.printer_info_label = QLabel("Loading printer information...")
+        self.printer_info_label = QLabel("Memuat informasi printer...")
         self.printer_info_label.setStyleSheet("""
             QLabel {
                 color: #2c3e50;
@@ -284,13 +284,13 @@ class PrintWindow(QMainWindow):
 
     def create_copy_group(self):
         """Create copy settings group - compact"""
-        group = QGroupBox("Copies")
+        group = QGroupBox("Salinan")
         layout = QGridLayout(group)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(5)
 
         # Number of copies
-        copies_label = QLabel("Copies:")
+        copies_label = QLabel("Salinan:")
         copies_label.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; font-size: 11px; }")
         layout.addWidget(copies_label, 0, 0)
         self.copies_spin = QSpinBox()
@@ -311,7 +311,7 @@ class PrintWindow(QMainWindow):
         layout.setSpacing(5)
 
         # Status label
-        self.status_label = QLabel("Ready to print")
+        self.status_label = QLabel("Siap untuk mencetak")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_label.setStyleSheet("""
             QLabel {
@@ -341,17 +341,17 @@ class PrintWindow(QMainWindow):
         button_row = QHBoxLayout()
 
         # Back button
-        self.back_button = QPushButton("← Back")
+        self.back_button = QPushButton("← Kembali")
         self.back_button.setMinimumHeight(40)
         self.back_button.clicked.connect(self.on_back_clicked)
 
         # Save button
-        self.save_button = QPushButton("💾 Save")
+        self.save_button = QPushButton("💾 Simpan")
         self.save_button.setMinimumHeight(40)
         self.save_button.clicked.connect(self.save_id_card)
 
         # Print button
-        self.print_button = QPushButton("🖨️ Print")
+        self.print_button = QPushButton("🖨️ Cetak")
         self.print_button.setMinimumHeight(40)
         self.print_button.clicked.connect(self.print_id_card)
 
@@ -372,7 +372,7 @@ class PrintWindow(QMainWindow):
 
         except Exception as e:
             print(f"Error creating ID card: {e}")
-            self.preview_label.setText("Error creating\nID card layout")
+            self.preview_label.setText("Kesalahan membuat\nlayout ID card")
 
     def create_id_card_layout_direct(self, processed_image):
         """Create final ID card layout in portrait orientation - direct implementation"""
@@ -420,14 +420,14 @@ class PrintWindow(QMainWindow):
             # Update info
             width, height = self.id_card_image.size
             self.preview_info.setText(
-                f"ID Card Size: {width}x{height} pixels\n"
-                f"Print Copies: {copies}\n"
+                f"Ukuran ID Card: {width}x{height} piksel\n"
+                f"Salinan Cetak: {copies}\n"
                 f"Estimated Size: {PRINT_SETTINGS['id_card_size'][0]:.1f} x {PRINT_SETTINGS['id_card_size'][1]:.1f} mm"
             )
 
         except Exception as e:
             print(f"Error updating preview: {e}")
-            self.preview_label.setText("Error updating\npreview")
+            self.preview_label.setText("Kesalahan memperbarui\npratinjau")
 
     def display_preview(self, image):
         """Display preview image with correct aspect ratio (object-fit: contain behavior) - portrait orientation"""
@@ -472,7 +472,7 @@ class PrintWindow(QMainWindow):
 
         except Exception as e:
             print(f"Error displaying preview: {e}")
-            self.preview_label.setText("Preview error")
+            self.preview_label.setText("Kesalahan pratinjau")
 
     def load_print_settings(self):
         """Load print settings and populate UI"""
@@ -493,7 +493,7 @@ class PrintWindow(QMainWindow):
         try:
             default_printer = db_manager.get_app_config('default_printer')
             if not default_printer:
-                self.printer_error_label.setText("⚠️ No printer configured. Please contact admin to set up printer.")
+                self.printer_error_label.setText("⚠️ Tidak ada printer yang dikonfigurasi. Silakan hubungi admin untuk mengatur printer.")
                 self.printer_error_label.show()
                 return False
 
@@ -507,7 +507,7 @@ class PrintWindow(QMainWindow):
                     break
 
             if not printer_found:
-                self.printer_error_label.setText(f"⚠️ Configured printer '{default_printer}' is not available. Please contact admin to update printer settings.")
+                self.printer_error_label.setText(f"⚠️ Printer yang dikonfigurasi '{default_printer}' tidak tersedia. Silakan hubungi admin untuk memperbarui pengaturan printer.")
                 self.printer_error_label.show()
                 return False
             else:
@@ -516,7 +516,7 @@ class PrintWindow(QMainWindow):
 
         except Exception as e:
             print(f"Error auto-selecting printer from database: {e}")
-            self.printer_error_label.setText(f"Error loading printer configuration: {str(e)}")
+            self.printer_error_label.setText(f"Kesalahan memuat konfigurasi printer: {str(e)}")
             self.printer_error_label.show()
             return False
 
@@ -527,23 +527,23 @@ class PrintWindow(QMainWindow):
             printers = self.print_manager.get_available_printers()
 
             if not default_printer:
-                self.printer_info_label.setText("No printer configured\nContact admin to set up printer")
+                self.printer_info_label.setText("Tidak ada printer yang dikonfigurasi\nHubungi admin untuk mengatur printer")
                 return
 
             # Find the configured printer
             printer_found = False
             for printer in printers:
                 if default_printer.lower() in printer['name'].lower():
-                    self.printer_info_label.setText(f"Configured Printer:\n{printer['name']}\nStatus: {printer['status']}")
+                    self.printer_info_label.setText(f"Printer yang Dikonfigurasi:\n{printer['name']}\nStatus: {printer['status']}")
                     printer_found = True
                     break
 
             if not printer_found:
-                self.printer_info_label.setText(f"Configured Printer:\n{default_printer}\n(Not Available)")
+                self.printer_info_label.setText(f"Printer yang Dikonfigurasi:\n{default_printer}\n(Tidak Tersedia)")
 
         except Exception as e:
             print(f"Error updating printer info display: {e}")
-            self.printer_info_label.setText("Error loading printer information")
+            self.printer_info_label.setText("Kesalahan memuat informasi printer")
 
     def validate_printer_from_database(self):
         """Validate if the printer from database is still available"""
@@ -564,7 +564,7 @@ class PrintWindow(QMainWindow):
 
             if not printer_found:
                 # Printer not found, show error
-                self.printer_error_label.setText(f"⚠️ Configured printer '{default_printer}' is not available. Please contact admin to update printer settings.")
+                self.printer_error_label.setText(f"⚠️ Printer yang dikonfigurasi '{default_printer}' tidak tersedia. Silakan hubungi admin untuk memperbarui pengaturan printer.")
                 self.printer_error_label.show()
             else:
                 # Printer is available, hide error
@@ -572,7 +572,7 @@ class PrintWindow(QMainWindow):
 
         except Exception as e:
             print(f"Error validating printer from database: {e}")
-            self.printer_error_label.setText(f"Error validating printer: {str(e)}")
+            self.printer_error_label.setText(f"Kesalahan memvalidasi printer: {str(e)}")
             self.printer_error_label.show()
 
     def refresh_printers(self):
@@ -590,7 +590,7 @@ class PrintWindow(QMainWindow):
     def print_id_card(self):
         """Print ID card"""
         if not self.id_card_image:
-            self.status_label.setText("No ID card to print")
+            self.status_label.setText("Tidak ada ID card untuk dicetak")
             return
 
         if self.print_thread and self.print_thread.isRunning():
@@ -599,12 +599,12 @@ class PrintWindow(QMainWindow):
         # Get printer from database
         printer_name = db_manager.get_app_config('default_printer')
         if not printer_name:
-            self.status_label.setText("No printer configured")
+            self.status_label.setText("Tidak ada printer yang dikonfigurasi")
             return
 
         # Validate printer is available
         if not self.auto_select_printer_from_database():
-            self.status_label.setText("Configured printer not available")
+            self.status_label.setText("Printer yang dikonfigurasi tidak tersedia")
             return
 
         copies = self.copies_spin.value()
@@ -642,9 +642,9 @@ class PrintWindow(QMainWindow):
         self.print_button.setEnabled(True)
 
         if success:
-            self.status_label.setText("Print job completed successfully!")
+            self.status_label.setText("Pekerjaan cetak berhasil diselesaikan!")
         else:
-            self.status_label.setText("Print job failed")
+            self.status_label.setText("Pekerjaan cetak gagal")
 
         self.print_complete.emit(success)
 
@@ -743,24 +743,24 @@ class PrintWindow(QMainWindow):
         """Save ID card to database and files"""
         try:
             if not self.id_card_image:
-                self.status_label.setText("No ID card to save")
+                self.status_label.setText("Tidak ada ID card untuk disimpan")
                 return
 
             # Get current user
             current_user = session_manager.get_current_user()
             if not current_user:
-                self.status_label.setText("No user logged in")
+                self.status_label.setText("Tidak ada pengguna yang login")
                 return
 
             # Get image save path from database configuration
             image_save_path = db_manager.get_app_config('image_save_path')
             if not image_save_path:
-                self.show_save_error("Image save path not configured. Please contact administrator.")
+                self.show_save_error("Path simpan gambar tidak dikonfigurasi. Silakan hubungi administrator.")
                 return
 
             # Check if the configured path exists
             if not os.path.exists(image_save_path):
-                self.show_save_error(f"Image save directory does not exist:\n{image_save_path}\n\nPlease contact administrator to create the directory.")
+                self.show_save_error(f"Direktori simpan gambar tidak ada:\n{image_save_path}\n\nSilakan hubungi administrator untuk membuat direktori.")
                 return
 
             user_npk = current_user['npk']
@@ -803,36 +803,36 @@ class PrintWindow(QMainWindow):
 
             success = db_manager.update_user(user_npk, update_data)
             if not success:
-                self.status_label.setText("Failed to update user database")
+                self.status_label.setText("Gagal memperbarui database pengguna")
                 return
 
             # Add photo history record
             history_success = db_manager.add_photo_history(user_npk, current_time)
             if not history_success:
-                self.status_label.setText("Failed to add photo history")
+                self.status_label.setText("Gagal menambahkan riwayat foto")
                 return
 
             # Update session manager with new photo info
             session_manager.update_user_photo_info(photo_filename, card_filename)
 
-            self.status_label.setText(f"ID card saved successfully!\nPhoto: {photo_filename}\nCard: {card_filename}")
+            self.status_label.setText(f"ID card berhasil disimpan!\nFoto: {photo_filename}\nKartu: {card_filename}")
 
         except Exception as e:
-            self.status_label.setText(f"Save error: {str(e)}")
+            self.status_label.setText(f"Kesalahan simpan: {str(e)}")
             print(f"Error saving ID card: {e}")
 
     def show_save_error(self, message):
         """Show error dialog for save failures"""
         msg_box = QMessageBox(self)
         msg_box.setIcon(QMessageBox.Icon.Critical)
-        msg_box.setWindowTitle("Save Failed")
-        msg_box.setText("Failed to save ID card")
+        msg_box.setWindowTitle("Simpan Gagal")
+        msg_box.setText("Gagal menyimpan ID card")
         msg_box.setDetailedText(message)
         msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg_box.exec()
 
         # Also update status label
-        self.status_label.setText("Save failed - see error dialog")
+        self.status_label.setText("Simpan gagal - lihat dialog kesalahan")
 
     def get_id_card_image(self):
         """Get the final ID card image"""
