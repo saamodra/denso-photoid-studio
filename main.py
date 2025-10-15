@@ -288,50 +288,86 @@ class IDCardPhotoApp:
             print(f"❌ Error showing admin window: {e}")
             self.show_error_dialog("Admin Error", f"Failed to show admin window:\n{str(e)}")
 
+    # def show_employee_list_window(self):
+    #     """Show admin Employee List"""
+    #     try:
+    #         from ui.employee_list_window import EmployeeListPage
+
+    #         if self.employee_list_window:
+    #             # If admin Employee List exists, just show it
+    #             self.employee_list_window.show()
+    #             self.employee_list_window.raise_()  # Bring to front
+    #             self.employee_list_window.activateWindow()  # Activate window
+    #         else:
+    #             # Create new admin Employee List
+    #             self.employee_list_window = EmployeeListPage()
+    #             self.employee_list_window.back_button_click.connect(self.show_admin_window) # keluar dari employee list masuk ke admin
+    #             # self.employee_list_window.show_employee_list.connect(self.show_employee_list_window)
+
+    #             # Ensure window appears on screen
+    #             self.employee_list_window.show()
+    #             self.employee_list_window.raise_()  # Bring to front
+    #             self.employee_list_window.activateWindow()  # Activate window
+                
+    #         # Di keluarin dari else, supaya full screen pasti
+    #         # 
+    #         #  Force window to center and be visible
+    #         screen = self.app.primaryScreen()
+    #         if screen:
+    #             screen_geometry = screen.availableGeometry()
+    #             window_geometry = self.employee_list_window.geometry()
+    #             x = (screen_geometry.width() - window_geometry.width()) // 2
+    #             y = (screen_geometry.height() - window_geometry.height()) // 2
+    #             self.employee_list_window.move(x, y)
+
+    #         # Close current window
+    #         if self.current_window:
+    #             self.current_window.hide()
+
+    #         self.current_window = self.employee_list_window
+    #         print(f"✅ Admin Employee List shown at position: {self.employee_list_window.x()}, {self.employee_list_window.y()}")
+    #         print(f"✅ Window size: {self.employee_list_window.width()}x{self.employee_list_window.height()}")
+    #         print(f"✅ Window visible: {self.employee_list_window.isVisible()}")
+
+    #     except Exception as e:
+    #         print(f"❌ Error showing admin Employee List: {e}")
+    #         self.show_error_dialog("Admin Error", f"Failed to show admin Employee List:\n{str(e)}")
+
     def show_employee_list_window(self):
-        """Show admin Employee List"""
+        """Menampilkan jendela daftar karyawan dalam mode maximized."""
         try:
             from ui.employee_list_window import EmployeeListPage
 
-            if self.employee_list_window:
-                # If admin Employee List exists, just show it
-                self.employee_list_window.show()
-                self.employee_list_window.raise_()  # Bring to front
-                self.employee_list_window.activateWindow()  # Activate window
-            else:
-                # Create new admin Employee List
+            # 1. Buat instance jendela HANYA jika belum ada
+            if not hasattr(self, 'employee_list_window') or not self.employee_list_window:
                 self.employee_list_window = EmployeeListPage()
-                self.employee_list_window.back_button_click.connect(self.show_admin_window) # keluar dari employee list masuk ke admin
-                # self.employee_list_window.show_employee_list.connect(self.show_employee_list_window)
+                # Hubungkan sinyal di sini saat pertama kali dibuat
+                self.employee_list_window.back_button.clicked.connect(self.show_admin_window)
 
-                # Ensure window appears on screen
-                self.employee_list_window.show()
-                self.employee_list_window.raise_()  # Bring to front
-                self.employee_list_window.activateWindow()  # Activate window
-                
-            # Di keluarin dari else, supaya full screen pasti
-            # 
-            #  Force window to center and be visible
-            screen = self.app.primaryScreen()
-            if screen:
-                screen_geometry = screen.availableGeometry()
-                window_geometry = self.employee_list_window.geometry()
-                x = (screen_geometry.width() - window_geometry.width()) // 2
-                y = (screen_geometry.height() - window_geometry.height()) // 2
-                self.employee_list_window.move(x, y)
-
-            # Close current window
-            if self.current_window:
+            # 2. Sembunyikan jendela yang aktif saat ini (jika ada)
+            if hasattr(self, 'current_window') and self.current_window and self.current_window is not self.employee_list_window:
                 self.current_window.hide()
 
+            # 3. Tetapkan jendela daftar karyawan sebagai jendela saat ini
             self.current_window = self.employee_list_window
-            print(f"✅ Admin Employee List shown at position: {self.employee_list_window.x()}, {self.employee_list_window.y()}")
-            print(f"✅ Window size: {self.employee_list_window.width()}x{self.employee_list_window.height()}")
-            print(f"✅ Window visible: {self.employee_list_window.isVisible()}")
+
+            # 4. Tampilkan jendela dalam mode maximized (INI KUNCINYA)
+            # Gunakan showMaximized() untuk pengalaman desktop terbaik.
+            self.current_window.showMaximized()
+            
+            # Opsi alternatif jika Anda benar-benar ingin menutupi taskbar:
+            # self.current_window.showFullScreen()
+
+            # 5. Bawa jendela ke depan (opsional, tapi praktik yang baik)
+            self.current_window.raise_()
+            self.current_window.activateWindow()
+            
+            print("✅ Jendela daftar karyawan berhasil ditampilkan dalam mode maximized.")
 
         except Exception as e:
-            print(f"❌ Error showing admin Employee List: {e}")
-            self.show_error_dialog("Admin Error", f"Failed to show admin Employee List:\n{str(e)}")
+            print(f"❌ Error saat menampilkan daftar karyawan: {e}")
+            # Asumsikan Anda memiliki fungsi untuk menampilkan dialog error
+            # self.show_error_dialog("Error", f"Gagal menampilkan daftar karyawan:\n{str(e)}")
 
     def show_camera_window(self):
         """Show camera window"""

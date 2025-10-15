@@ -171,7 +171,7 @@ class DatabaseManager:
     
     def get_all_users_with_request_histories(self) -> List[Dict[str, Any]]:
         """Get all users"""
-        query = "SELECT A.*, B.status status_request FROM users A LEFT JOIN request_histories B ON A.npk = B.npk AND B.id = (SELECT MAX(id)FROM request_histories WHERE npk = A.npk)  ORDER BY name"
+        query = "SELECT A.*, B.status status_request, B.request_time, B.request_desc, B.id request_id FROM users A LEFT JOIN request_histories B ON A.npk = B.npk AND B.id = (SELECT MAX(id)FROM request_histories WHERE npk = A.npk)  ORDER BY name"
         return self.execute_query(query)
 
     def create_user(self, user_data: Dict[str, Any]) -> bool:
@@ -222,6 +222,9 @@ class DatabaseManager:
 
             params.append(npk)
             query = f"UPDATE users SET {', '.join(set_clauses)} WHERE npk = ?"
+            
+            logger.info(f"User NPK {npk} updated to data {', '.join(set_clauses)}")
+
             self.execute_update(query, tuple(params))
             return True
         except Exception as e:
@@ -237,7 +240,6 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Failed to remove user: {e}")
             return False
-
     
     def add_photo_history(self, npk: str, photo_time: datetime = None) -> bool:
         """Add photo history record"""
@@ -265,6 +267,49 @@ class DatabaseManager:
             return True
         except Exception as e:
             logger.error(f"Failed to add request history: {e}")
+            return False
+
+    def update_request_history(self, request_id: int, status: str, remark: str, respons_name: str) -> bool:
+        """
+        Updates a request history record with an admin's response.
+        This includes setting the status, remark, responder's name, and the response timestamp.
+        
+        Args:
+            request_id (int): The primary key ID of the request record to update.
+            status (str): The new status, e.g., 'approved' or 'rejected'.
+            remark (str): An optional note from the admin.
+            respons_name (str): The name of the admin responding.
+            
+        Returns:
+            bool: True if the update was successful, False otherwise.
+        """
+        try:
+            # Dapatkan timestamp saat ini untuk waktu respon
+            response_time = datetime.now()
+
+            # Query SQL untuk memperbarui data
+            query = """
+                UPDATE request_histories
+                SET 
+                    status = ?,
+                    remark = ?,
+                    respons_time = ?,
+                    respons_name = ?
+                WHERE 
+                    id = ?
+            """
+
+            # Siapkan parameter dalam urutan yang benar sesuai dengan placeholder '?'
+            params = (status, remark, response_time, respons_name, request_id)
+            
+            # Eksekusi query update menggunakan metode helper Anda
+            self.execute_update(query, params)
+            logger.info(f"Request ID {request_id} updated to status '{status}' by {respons_name}.")
+
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to update request history for ID {request_id}: {e}")
             return False
 
     def get_photo_histories(self, npk: str = None) -> List[Dict[str, Any]]:
