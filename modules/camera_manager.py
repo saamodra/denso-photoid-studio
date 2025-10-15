@@ -25,75 +25,143 @@ class CameraThread(QThread):
         self.camera_initialized = False
         self._lock = QMutex()  # Add mutex for thread safety
 
+    # def run(self):
+    #     """Main camera thread loop"""
+    #     try:
+    #         print(f"Camera thread starting for camera {self.camera_index} with backend {self.backend}")
+
+    #         # Initialize camera
+    #         self.camera = cv2.VideoCapture(self.camera_index, self.backend)
+
+    #         if not self.camera.isOpened():
+    #             print(f"Failed to open camera {self.camera_index}")
+    #             return
+
+    #         print(f"Camera {self.camera_index} opened successfully")
+
+    #         # Set camera properties with error handling
+    #         try:
+    #             self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_SETTINGS['default_resolution'][0])
+    #             self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_SETTINGS['default_resolution'][1])
+    #             self.camera.set(cv2.CAP_PROP_FPS, CAMERA_SETTINGS['preview_fps'])
+    #         except Exception as e:
+    #             print(f"Warning: Could not set camera properties: {e}")
+
+    #         # Test if we can read a frame before starting the loop
+    #         ret, test_frame = self.camera.read()
+    #         if not ret or test_frame is None:
+    #             print(f"Camera {self.camera_index} cannot read frames")
+    #             return
+
+    #         print(f"Camera {self.camera_index} frame test successful, starting preview loop")
+    #         self.camera_initialized = True
+    #         self.running = True
+    #         frame_count = 0
+
+    #         while self.running:
+    #             # Check if camera is still valid before reading
+    #             if not self.camera or not self.camera.isOpened():
+    #                 print(f"Camera {self.camera_index} is no longer valid, stopping")
+    #                 break
+
+    #             # Use mutex to ensure thread safety
+    #             self._lock.lock()
+    #             try:
+    #                 ret, frame = self.camera.read()
+    #             except Exception as e:
+    #                 print(f"Error reading from camera {self.camera_index}: {e}")
+    #                 self._lock.unlock()
+    #                 break
+    #             finally:
+    #                 self._lock.unlock()
+
+    #             if ret and frame is not None:
+    #                 # Flip frame horizontally for mirror effect
+    #                 frame = cv2.flip(frame, 1)
+    #                 self.frame_ready.emit(frame)
+    #                 frame_count += 1
+
+    #                 # Log every 30 frames (roughly once per second)
+    #                 if frame_count % 30 == 0:
+    #                     print(f"Camera {self.camera_index}: {frame_count} frames processed")
+    #             else:
+    #                 print(f"Camera {self.camera_index}: Failed to read frame")
+    #                 break
+
+    #             self.msleep(33)  # ~30 FPS
+
+    #     except Exception as e:
+    #         print(f"Camera thread error: {e}")
+    #     finally:
+    #         print(f"Camera thread for camera {self.camera_index} ending")
+    #         self._cleanup_camera()
+
+    # Di dalam kelas CameraThread (file modules/camera_manager.py)
+
     def run(self):
-        """Main camera thread loop"""
+        """Main camera thread loop - dimodifikasi agar lebih stabil dengan webcam virtual."""
         try:
             print(f"Camera thread starting for camera {self.camera_index} with backend {self.backend}")
 
-            # Initialize camera
+            # --- PERBAIKAN 1: Beri waktu bagi driver untuk siap ---
+            # Beri jeda singkat agar driver seperti Canon Webcam Utility punya waktu untuk inisialisasi.
+            self.msleep(500) # Tunggu 0.5 detik
+
             self.camera = cv2.VideoCapture(self.camera_index, self.backend)
 
             if not self.camera.isOpened():
-                print(f"Failed to open camera {self.camera_index}")
+                print(f"FATAL: Gagal membuka kamera {self.camera_index} dengan backend {self.backend}.")
                 return
 
-            print(f"Camera {self.camera_index} opened successfully")
+            print(f"Kamera {self.camera_index} berhasil dibuka.")
 
-            # Set camera properties with error handling
-            try:
-                self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_SETTINGS['default_resolution'][0])
-                self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_SETTINGS['default_resolution'][1])
-                self.camera.set(cv2.CAP_PROP_FPS, CAMERA_SETTINGS['preview_fps'])
-            except Exception as e:
-                print(f"Warning: Could not set camera properties: {e}")
+            # --- PERBAIKAN 2: Nonaktifkan pengaturan properti paksa ---
+            # Webcam virtual seringkali memiliki resolusi & FPS tetap. Memaksanya bisa menyebabkan kegagalan.
+            # Kita nonaktifkan baris-baris ini untuk sementara. Jika kamera berfungsi, biarkan seperti ini.
+            # -----------------------------------------------------------------
+            # try:
+            #     self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_SETTINGS['default_resolution'][0])
+            #     self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_SETTINGS['default_resolution'][1])
+            #     self.camera.set(cv2.CAP_PROP_FPS, CAMERA_SETTINGS['preview_fps'])
+            # except Exception as e:
+            #     print(f"Warning: Tidak dapat mengatur properti kamera: {e}")
+            # -----------------------------------------------------------------
+            
+            # Dapatkan resolusi aktual dari kamera
+            width = int(self.camera.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(self.camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            print(f"Resolusi aktual kamera {self.camera_index}: {width}x{height}")
 
-            # Test if we can read a frame before starting the loop
-            ret, test_frame = self.camera.read()
-            if not ret or test_frame is None:
-                print(f"Camera {self.camera_index} cannot read frames")
-                return
-
-            print(f"Camera {self.camera_index} frame test successful, starting preview loop")
             self.camera_initialized = True
             self.running = True
-            frame_count = 0
 
             while self.running:
-                # Check if camera is still valid before reading
                 if not self.camera or not self.camera.isOpened():
-                    print(f"Camera {self.camera_index} is no longer valid, stopping")
+                    print(f"Koneksi kamera {self.camera_index} terputus.")
                     break
 
-                # Use mutex to ensure thread safety
-                self._lock.lock()
-                try:
-                    ret, frame = self.camera.read()
-                except Exception as e:
-                    print(f"Error reading from camera {self.camera_index}: {e}")
-                    self._lock.unlock()
-                    break
-                finally:
-                    self._lock.unlock()
+                ret, frame = self.camera.read()
 
                 if ret and frame is not None:
-                    # Flip frame horizontally for mirror effect
+                    # Flip frame secara horizontal untuk efek cermin
                     frame = cv2.flip(frame, 1)
                     self.frame_ready.emit(frame)
-                    frame_count += 1
-
-                    # Log every 30 frames (roughly once per second)
-                    if frame_count % 30 == 0:
-                        print(f"Camera {self.camera_index}: {frame_count} frames processed")
                 else:
-                    print(f"Camera {self.camera_index}: Failed to read frame")
-                    break
-
-                self.msleep(33)  # ~30 FPS
+                    # Jika gagal membaca frame, tunggu sejenak dan coba lagi sebelum berhenti
+                    print(f"Peringatan: Gagal membaca frame dari kamera {self.camera_index}. Mencoba lagi...")
+                    self.msleep(100)
+                    ret_retry, _ = self.camera.read()
+                    if not ret_retry:
+                        print(f"Gagal membaca frame setelah mencoba lagi. Menghentikan thread.")
+                        break
+                
+                # Atur delay sesuai FPS yang diinginkan
+                self.msleep(int(1000 / CAMERA_SETTINGS['preview_fps']))
 
         except Exception as e:
-            print(f"Camera thread error: {e}")
+            print(f"Terjadi error pada thread kamera: {e}")
         finally:
-            print(f"Camera thread for camera {self.camera_index} ending")
+            print(f"Thread kamera untuk {self.camera_index} berakhir.")
             self._cleanup_camera()
 
     def stop(self):
@@ -279,15 +347,34 @@ class CameraManager:
             return True
         return False
 
+    # def start_preview(self, frame_callback=None):
+    #     """Start camera preview"""
+    #     if self.camera_thread and self.camera_thread.isRunning():
+    #         self.stop_preview()
+
+    #     # Get backend for current camera
+    #     backend = cv2.CAP_ANY
+    #     if self.current_camera_index < len(self.available_cameras):
+    #         backend = self.available_cameras[self.current_camera_index].get('backend', cv2.CAP_ANY)
+
+    #     self.camera_thread = CameraThread(self.current_camera_index, backend)
+    #     if frame_callback:
+    #         self.camera_thread.frame_ready.connect(frame_callback)
+    #     self.camera_thread.frame_ready.connect(self._update_current_frame)
+    #     self.camera_thread.start()
+    # Di dalam kelas CameraManager (file modules/camera_manager.py)
+
     def start_preview(self, frame_callback=None):
         """Start camera preview"""
         if self.camera_thread and self.camera_thread.isRunning():
             self.stop_preview()
 
-        # Get backend for current camera
-        backend = cv2.CAP_ANY
+        # --- PERBAIKAN 3: Prioritaskan backend CAP_DSHOW untuk Windows ---
         if self.current_camera_index < len(self.available_cameras):
             backend = self.available_cameras[self.current_camera_index].get('backend', cv2.CAP_ANY)
+        else:
+            # Fallback jika tidak ada kamera terpilih
+            return
 
         self.camera_thread = CameraThread(self.current_camera_index, backend)
         if frame_callback:

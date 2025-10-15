@@ -7,8 +7,10 @@ from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QT
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
 from modules.database import db_manager
+from modules.session_manager import session_manager
 
 from ui.employee_detail_window import EmployeeDetailPage
+from ui.dialogs.admin_respon_request_dialog import AdminResponseDialog
 
 # Pustaka untuk Excel, pastikan sudah diinstal: pip install openpyxl
 import openpyxl
@@ -107,9 +109,15 @@ class EmployeeListPage(QWidget):
 
         self.init_ui()
         self.apply_styles()
-        self.load_dummy_data() # Ganti dengan koneksi database Anda
 
         self.employee_detail_window = None
+        # self.load_data() # Ganti dengan koneksi database Anda
+        self.current_user = session_manager.get_current_user()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        print("Reloading data on show...")
+        self.load_data()
 
     def init_ui(self):
         """Inisialisasi semua komponen UI."""
@@ -171,11 +179,12 @@ class EmployeeListPage(QWidget):
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents) # NPK
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents) # NPK
-        self.table.horizontalHeader().setSectionResizeMode(9, QHeaderView.ResizeMode.ResizeToContents) # Aksi
+        self.table.horizontalHeader().setStretchLastSection(False)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+
+        # khusus kolom aksi
+        self.table.horizontalHeader().setSectionResizeMode(9, QHeaderView.ResizeMode.Stretch)
+
         # self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive) # Nama
         self.table.verticalHeader().setDefaultSectionSize(50)
 
@@ -290,9 +299,10 @@ class EmployeeListPage(QWidget):
             }}
         """)
     
-    def load_dummy_data(self):
+    def load_data(self):
         """Memuat data dummy. Ganti fungsi ini dengan koneksi database Anda."""
         # TODO: Ganti bagian ini dengan query ke database Anda
+        self.show_styled_messagebox("Error", f"Memuat data dummy. Ganti", icon=QMessageBox.Icon.Critical)
         
         self.all_employees = db_manager.get_all_users_with_request_histories()
         
@@ -343,44 +353,58 @@ class EmployeeListPage(QWidget):
             # Kolom Status (logika custom)
             approved_button = False
             status_teks = str(employee.get("status_request", ""))
-            match(status_teks):
+
+            match status_teks:
                 case 'requested':
-                    status_warna = "yellow"
+                    status_warna_teks = "black"
+                    status_warna_bg = "#FFF176"  # kuning muda
                     approved_button = True
                 case 'approved':
-                    status_warna = "green"
+                    status_warna_teks = "white"
+                    status_warna_bg = "#66BB6A"  # hijau lembut
                 case 'rejected':
-                    status_warna = "red"
+                    status_warna_teks = "white"
+                    status_warna_bg = "#EF5350"  # merah lembut
                 case _:
-                    status_warna = "black"
+                    status_warna_teks = "white"
+                    status_warna_bg = "#9E9E9E"  # abu-abu
+
+            status_item = QTableWidgetItem(str(employee.get("request_id", "")) + " " +status_teks)
+            status_item.setForeground(QColor(status_warna_teks))  # warna teks
+            status_item.setBackground(QColor(status_warna_bg))    # warna latar
             
-            status_item = QTableWidgetItem(status_teks)
-            status_item.setForeground(QColor(status_warna))
-            self.table.setItem(row_index, 8, status_item)
-            
-            # Kolom Aksi dengan dua tombol
+            self.table.setItem(row_index, 8,  status_item)
+
+            # Kolom Aksi dengan tiga tombol
             action_widget = QWidget()
             action_layout = QHBoxLayout(action_widget)
-            action_layout.setContentsMargins(0, 0, 0, 0)  # hilangkan jarak tepi
-            action_layout.setSpacing(6)  # jarak antar tombol
+            action_layout.setContentsMargins(0, 0, 0, 0)
+            action_layout.setSpacing(6)
 
-            # Kolom Aksi dengan Tombol
-            detail_button = QPushButton("📃")
+            # Tombol Detail
+            detail_button = QPushButton("Detail 📄")
+            detail_button.setToolTip("Lihat Detail")
             detail_button.clicked.connect(lambda ch, employee=employee: self.show_employee_detail(employee))
 
-            # Kolom Aksi dengan Tombol
-            confirmation_button = QPushButton("✅")
-            confirmation_button.clicked.connect(lambda ch, npk=employee.get("npk"): self.confirm_employee(npk))
-            
-            # Kolom Aksi dengan Tombol
-            delete_button = QPushButton("🗑️")
+            # Tombol Hapus
+            delete_button = QPushButton("Hapus 🗑️")
+            delete_button.setToolTip("Hapus Data")
             delete_button.clicked.connect(lambda ch, npk=employee.get("npk"): self.delete_employee(npk))
+
+            # Tombol Konfirmasi
+            confirmation_button = QPushButton("Setujui ✅")
+            confirmation_button.setToolTip("Beri Respon pada Request")
+            confirmation_button.clicked.connect(lambda ch, employee=employee: self.confirm_employee(employee, self.current_user))
+            confirmation_button.setEnabled(approved_button)  # hanya aktif jika status 'requested'
 
             # Tambahkan tombol ke layout
             action_layout.addWidget(detail_button)
             action_layout.addWidget(delete_button)
-            if(approved_button == True):
-                action_layout.addWidget(confirmation_button)
+            action_layout.addWidget(confirmation_button)
+
+            # Masukkan widget ke kolom aksi
+            self.table.setCellWidget(row_index, 9, action_widget)
+
 
             self.table.setCellWidget(row_index, 9, action_widget)
 
@@ -497,8 +521,12 @@ class EmployeeListPage(QWidget):
         dialog.exec()
 
     # --- Confirm employee ---
-    def confirm_employee(self, npk):
-        self.show_styled_messagebox("Information", f"confirm_employee {npk} is clicked")
+    def confirm_employee(self, request, admin):
+        # self.show_styled_messagebox("Information", f"confirm_employee {npk} is clicked")
+        dialog = AdminResponseDialog(request_data=request, admin_user=admin)
+        dialog.request_updated.connect(self.load_data) # refresh data
+        dialog.exec()
+
 
     # --- Confirm employee ---
     def delete_employee(self, npk):
