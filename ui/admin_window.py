@@ -545,7 +545,6 @@ class AdminWindow(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Admin Panel - " + APP_NAME)
-        self.showFullScreen()  # Make window fullscreen
         self.setStyleSheet(self.get_stylesheet())
 
         # Main layout
