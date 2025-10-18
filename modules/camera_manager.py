@@ -144,7 +144,16 @@ class CameraThread(QThread):
 
                 if ret and frame is not None:
                     # Flip frame secara horizontal untuk efek cermin
+                    # frame = cv2.flip(frame, 1)
+                    # self.frame_ready.emit(frame)
+
+                    # --- TAMBAHKAN DI SINI: Rotasi 90 derajat (portrait) ---
+                    frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+
+                    # Opsional: flip horizontal agar mirror (seperti selfie)
                     frame = cv2.flip(frame, 1)
+
+                    # Emit frame yang sudah portrait
                     self.frame_ready.emit(frame)
                 else:
                     # Jika gagal membaca frame, tunggu sejenak dan coba lagi sebelum berhenti
@@ -481,9 +490,11 @@ class CameraManager:
                         return None
 
                 # Apply same processing as in camera thread
+                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE) # Rotate
                 frame = cv2.flip(frame, 1)  # Mirror effect
                 print("Captured fresh frame from camera")
                 return frame.copy()
+
             finally:
                 self.camera_thread._lock.unlock()
 
