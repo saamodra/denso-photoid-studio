@@ -73,6 +73,7 @@ class PrintWindow(QMainWindow):
 
     print_complete = pyqtSignal(bool)  # Success/failure
     back_requested = pyqtSignal()
+    logout_requested = pyqtSignal()
 
     def __init__(self, processed_image, original_image_path=None):
         super().__init__()
@@ -355,9 +356,15 @@ class PrintWindow(QMainWindow):
         self.print_button.setMinimumHeight(40)
         self.print_button.clicked.connect(self.print_id_card)
 
+        # Finish button to end session
+        self.finish_button = QPushButton("✅ Selesai")
+        self.finish_button.setMinimumHeight(40)
+        self.finish_button.clicked.connect(self.on_finish_clicked)
+
         button_row.addWidget(self.back_button)
         button_row.addWidget(self.save_button)
         button_row.addWidget(self.print_button)
+        button_row.addWidget(self.finish_button)
 
         layout.addLayout(button_row)
 
@@ -651,7 +658,12 @@ class PrintWindow(QMainWindow):
     def on_back_clicked(self):
         """Handle back button click"""
         self.back_requested.emit()
+
+    def on_finish_clicked(self):
+        """Handle finish button click to end session"""
+        self.finish_button.setEnabled(False)
         self.close()
+        self.logout_requested.emit()
 
     def apply_style(self):
         """Apply modern styling"""

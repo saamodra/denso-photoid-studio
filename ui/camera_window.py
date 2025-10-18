@@ -13,7 +13,7 @@ import os
 from modules.camera_manager import CameraManager, CaptureTimer
 from modules.database import db_manager
 from modules.session_manager import session_manager
-from config import UI_SETTINGS, CAMERA_SETTINGS
+from config import UI_SETTINGS, CAMERA_SETTINGS, APP_NAME
 from ui.dialogs.custom_dialog import CustomStyledDialog
 
 
@@ -77,6 +77,7 @@ class MainWindow(QMainWindow):
 
     photos_captured = pyqtSignal(list)  # Signal emitted when photos are captured
     logout_requested = pyqtSignal()  # Signal emitted when logout is requested
+    back_to_dashboard_requested = pyqtSignal()  # Signal emitted when user wants to return to dashboard
 
     def __init__(self):
         super().__init__()
@@ -97,7 +98,7 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         """Initialize user interface"""
-        self.setWindowTitle("Mesin Foto ID Card Denso")
+        self.setWindowTitle("Camera Window")
         # Set to fullscreen by default
         self.showFullScreen()
 
@@ -434,6 +435,17 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.user_role_label)
         layout.addWidget(self.user_department_label)
 
+        # Action buttons container
+        action_buttons_layout = QVBoxLayout()
+        action_buttons_layout.setSpacing(8)
+
+        # Back to dashboard button
+        self.back_to_dashboard_button = QPushButton("← Kembali ke Dashboard")
+        self.back_to_dashboard_button.setObjectName("BackDashboardButton")
+        self.back_to_dashboard_button.setMinimumHeight(40)
+        self.back_to_dashboard_button.clicked.connect(self.cancel_capture_session)
+        action_buttons_layout.addWidget(self.back_to_dashboard_button)
+
         # Logout button
         logout_btn = QPushButton("Keluar")
         logout_btn.setStyleSheet("""
@@ -450,7 +462,9 @@ class MainWindow(QMainWindow):
             }
         """)
         logout_btn.clicked.connect(self.logout)
-        layout.addWidget(logout_btn)
+        action_buttons_layout.addWidget(logout_btn)
+
+        layout.addLayout(action_buttons_layout)
 
         return group
 
@@ -480,6 +494,35 @@ class MainWindow(QMainWindow):
                 self.user_npk_label.setText("")
                 self.user_role_label.setText("")
                 self.user_department_label.setText("")
+
+    def cancel_capture_session(self):
+        """Handle request to return to dashboard without logging out"""
+        message = "Apakah Anda yakin ingin kembali ke dashboard?\nKemajuan pengambilan foto saat ini akan dibatalkan."
+        if self.countdown_active:
+            message = "Proses pengambilan foto sedang berlangsung.\nApakah Anda yakin ingin membatalkannya dan kembali ke dashboard?"
+
+        dialog = CustomStyledDialog(
+            self,
+            'Batalkan Pengambilan',
+            message,
+            [("Tidak", QDialog.DialogCode.Rejected), ("Ya", QDialog.DialogCode.Accepted)]
+        )
+        dialog.set_cancel_button(0)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.stop_camera()
+
+            # Reset UI state
+            self.countdown_active = False
+            self.capture_button.setEnabled(True)
+            self.back_to_dashboard_button.setEnabled(True)
+            self.progress_bar.hide()
+            self.countdown_label.hide()
+            self.capture_overlay.hide()
+            self.delay_overlay.hide()
+
+            # Emit signal so main app can navigate back
+            self.back_to_dashboard_requested.emit()
 
     def logout(self):
         """Handle logout request"""
@@ -693,6 +736,7 @@ class MainWindow(QMainWindow):
 
         # Disable capture button
         self.capture_button.setEnabled(False)
+        self.back_to_dashboard_button.setEnabled(False)
         self.countdown_active = True
 
         # Show progress bar
@@ -779,6 +823,7 @@ class MainWindow(QMainWindow):
 
         # Re-enable capture button
         self.capture_button.setEnabled(True)
+        self.back_to_dashboard_button.setEnabled(True)
         self.countdown_active = False
         self.progress_bar.hide()
 
@@ -830,6 +875,19 @@ class MainWindow(QMainWindow):
             }
             QPushButton:pressed {
                 background-color: #1b2631;
+            }
+            QPushButton#BackDashboardButton {
+                background-color: #E60012;
+                color: #FFFFFF;
+                font-size: 14px;
+                border-radius: 8px;
+                padding: 10px;
+            }
+            QPushButton#BackDashboardButton:hover {
+                background-color: #CC0010;
+            }
+            QPushButton#BackDashboardButton:pressed {
+                background-color: #99000C;
             }
             QComboBox {
                 border: 2px solid #bdc3c7;
