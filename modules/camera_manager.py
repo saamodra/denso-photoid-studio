@@ -382,6 +382,46 @@ class CameraManager:
         self.camera_thread.frame_ready.connect(self._update_current_frame)
         self.camera_thread.start()
 
+    def warm_up_camera(self):
+        """Buka kamera sebentar untuk pemanasan saat aplikasi dimulai"""
+        try:
+            if not self.available_cameras:
+                self.available_cameras = self.detect_cameras()
+
+            if not self.available_cameras:
+                print("Pemanasan kamera dilewati: tidak ada kamera yang terdeteksi")
+                return False
+
+            camera_info = self.available_cameras[self.current_camera_index]
+            backend = camera_info.get('backend', cv2.CAP_ANY)
+            index = camera_info.get('index', 0)
+
+            cap = cv2.VideoCapture(index, backend)
+            if not cap.isOpened():
+                print(f"Pemanasan kamera gagal: tidak dapat membuka kamera {index}")
+                return False
+
+            success = False
+            for _ in range(5):
+                ret, frame = cap.read()
+                if ret and frame is not None:
+                    success = True
+                    break
+                time.sleep(0.1)
+
+            cap.release()
+
+            if success:
+                print(f"✅ Kamera siap digunakan: {camera_info.get('name', index)}")
+            else:
+                print("⚠️ Pemanasan kamera tidak berhasil mendapatkan frame")
+
+            return success
+
+        except Exception as e:
+            print(f"❌ Kesalahan saat pemanasan kamera: {e}")
+            return False
+
     def stop_preview(self):
         """Stop camera preview"""
         if self.camera_thread:

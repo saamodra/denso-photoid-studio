@@ -79,9 +79,10 @@ class MainWindow(QMainWindow):
     logout_requested = pyqtSignal()  # Signal emitted when logout is requested
     back_to_dashboard_requested = pyqtSignal()  # Signal emitted when user wants to return to dashboard
 
-    def __init__(self):
+    def __init__(self, camera_manager=None):
         super().__init__()
-        self.camera_manager = CameraManager()
+        self.camera_manager = camera_manager or CameraManager()
+        self._owns_camera_manager = camera_manager is None
         self.capture_timer = None
         self.photo_capture_thread = None
         self.countdown_active = False
@@ -95,6 +96,17 @@ class MainWindow(QMainWindow):
 
         # Setup camera after UI is shown
         self.setup_camera()
+
+    def set_camera_manager(self, camera_manager):
+        """Perbarui manajer kamera yang digunakan oleh jendela"""
+        if not camera_manager or camera_manager is self.camera_manager:
+            return
+
+        if self._owns_camera_manager and self.camera_manager:
+            self.camera_manager.cleanup()
+
+        self.camera_manager = camera_manager
+        self._owns_camera_manager = False
 
     def init_ui(self):
         """Initialize user interface"""
@@ -647,11 +659,14 @@ class MainWindow(QMainWindow):
 
     def setup_camera(self):
         """Setup camera and auto-select from database"""
-        print("Setting up camera...")
+        print("Menyiapkan kamera...")
 
-        # Load cameras
-        self.camera_manager.available_cameras = self.camera_manager.detect_cameras()
         cameras = self.camera_manager.get_available_cameras()
+        if not cameras:
+            self.camera_manager.available_cameras = self.camera_manager.detect_cameras()
+            cameras = self.camera_manager.get_available_cameras()
+        else:
+            print(f"Menggunakan hasil deteksi kamera sebelumnya: {len(cameras)} kamera")
 
         # Try to auto-select camera from database
         camera_available = self.auto_select_camera_from_database()
@@ -693,10 +708,20 @@ class MainWindow(QMainWindow):
             if not self.auto_select_camera_from_database():
                 return  # Camera not available, error already shown
 
-            print("Attempting to start camera preview...")
-            self.camera_manager.start_preview(self.update_camera_frame)
-            self.camera_status.setText("Kamera: Memulai...")
-            print("Camera preview start command sent")
+            thread = getattr(self.camera_manager, 'camera_thread', None)
+            if thread and thread.isRunning():
+                try:
+                    thread.frame_ready.disconnect(self.update_camera_frame)
+                except TypeError:
+                    pass
+                thread.frame_ready.connect(self.update_camera_frame)
+                self.camera_status.setText("Kamera: Aktif")
+                print("Pratinjau kamera sudah berjalan, memakai koneksi yang ada")
+            else:
+                print("Mencoba memulai pratinjau kamera...")
+                self.camera_manager.start_preview(self.update_camera_frame)
+                self.camera_status.setText("Kamera: Memulai...")
+                print("Perintah memulai pratinjau kamera telah dikirim")
 
             # Set a timer to check if preview actually started
             QTimer.singleShot(3000, self.check_camera_status)
@@ -959,7 +984,7 @@ class MainWindow(QMainWindow):
         self.stop_camera()
 
         # Additional cleanup
-        if self.camera_manager:
+        if self.camera_manager and self._owns_camera_manager:
             self.camera_manager.cleanup()
 
         event.accept()

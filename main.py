@@ -21,6 +21,7 @@ from ui.print_window import PrintWindow
 from ui.dialogs.custom_dialog import CustomStyledDialog
 from config import APP_NAME, APP_VERSION, UI_SETTINGS
 from modules.session_manager import session_manager
+from modules.camera_manager import CameraManager
 
 
 class IDCardPhotoApp:
@@ -37,6 +38,7 @@ class IDCardPhotoApp:
         self.captured_photos = []
         self.selected_photo = None
         self.processed_image = None
+        self.camera_manager = None
 
         # Windows
         self.login_window = None
@@ -50,6 +52,30 @@ class IDCardPhotoApp:
         self.print_window = None
 
         self.setup_application()
+        self.app.aboutToQuit.connect(self.cleanup_resources)
+        QTimer.singleShot(0, self.preload_camera)
+
+    def get_camera_manager(self):
+        """Dapatkan instance CameraManager yang dibagikan"""
+        if not self.camera_manager:
+            self.camera_manager = CameraManager()
+        return self.camera_manager
+
+    def preload_camera(self):
+        """Mulai memuat kamera segera setelah aplikasi berjalan"""
+        if self.camera_manager:
+            return
+
+        try:
+            print("🎥 Memuat kamera lebih awal...")
+            manager = self.get_camera_manager()
+            warmed = manager.warm_up_camera()
+            if warmed:
+                print("✅ Kamera siap digunakan begitu aplikasi dibuka")
+            else:
+                print("⚠️ Kamera belum siap, akan diproses ulang saat jendela kamera dibuka")
+        except Exception as e:
+            print(f"❌ Gagal melakukan pemanasan kamera awal: {e}")
 
     def setup_application(self):
         """Setup application-wide settings"""
@@ -84,6 +110,14 @@ class IDCardPhotoApp:
                 self.app.setWindowIcon(QIcon(icon_path))
         except:
             pass
+
+    def cleanup_resources(self):
+        """Pastikan resource kamera ditutup ketika aplikasi keluar"""
+        if self.camera_manager:
+            try:
+                self.camera_manager.cleanup()
+            except Exception as e:
+                print(f"⚠️ Tidak dapat membersihkan kamera saat keluar: {e}")
 
     def run(self):
         """Start the application"""
@@ -371,8 +405,10 @@ class IDCardPhotoApp:
     def show_camera_window(self):
         """Show camera window"""
         try:
+            manager = self.get_camera_manager()
             if self.camera_window:
                 # If camera window exists, just show it and restart camera
+                self.camera_window.set_camera_manager(manager)
                 self.camera_window.show()
                 self.camera_window.raise_()  # Bring to front
                 self.camera_window.activateWindow()  # Activate window
@@ -381,7 +417,7 @@ class IDCardPhotoApp:
                 self.camera_window.set_session_info(session_manager.get_current_user())
             else:
                 # Create new camera window
-                self.camera_window = CameraWindow()
+                self.camera_window = CameraWindow(camera_manager=manager)
                 self.camera_window.photos_captured.connect(self.on_photos_captured)
                 self.camera_window.logout_requested.connect(self.logout)
                 self.camera_window.back_to_dashboard_requested.connect(self.show_dashboard_window)
