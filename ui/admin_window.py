@@ -4,12 +4,15 @@ from PyQt6.QtWidgets import (
     QLineEdit, QComboBox, QSpinBox, QFileDialog, QMessageBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+import logging
 import sys
 from config import APP_NAME
 from modules.database import db_manager
 from modules.camera_manager import CameraManager
 from modules.print_manager import PrintManager
 from ui.dialogs.custom_dialog import CustomStyledDialog
+
+logger = logging.getLogger(__name__)
 
 
 class CustomStyledDialog(QDialog):
@@ -542,6 +545,7 @@ class AdminWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.init_ui()
+        self.load_system_info()
 
     def init_ui(self):
         self.setWindowTitle("Admin Panel - " + APP_NAME)
@@ -603,29 +607,48 @@ class AdminWindow(QWidget):
         system_title = QLabel("📊 Informasi Sistem")
         system_title.setObjectName("SectionTitle")
 
-        # System info display area (placeholder)
-        info_layout = QGridLayout()
+        self.refresh_info_btn = QPushButton("🔄 Muat Ulang Data")
+        self.refresh_info_btn.setObjectName("InfoRefreshButton")
+        self.refresh_info_btn.clicked.connect(self.load_system_info)
 
+        # System info display area
+        info_layout = QHBoxLayout()
+        info_layout.setSpacing(15)
+
+        self.info_value_labels = {}
         info_items = [
-            ("Total Karyawan:", "0"),
-            ("Perpanjangan Tertunda:", "0"),
-            ("ID Card Dicetak Hari Ini:", "0"),
-            ("Status Sistem:", "Online")
+            ("employee_count", "👥 Total Karyawan Saat Ini:"),
+            ("pending_requests", "📝 Permintaan Foto Ulang:"),
+            ("photos_taken", "📷 Total Foto Diambil:")
         ]
 
-        for i, (label_text, value_text) in enumerate(info_items):
-            label = QLabel(label_text)
-            label.setObjectName("InfoLabel")
-            value = QLabel(value_text)
-            value.setObjectName("InfoValue")
+        for key, title_text in info_items:
+            card = QFrame()
+            card.setObjectName("InfoCard")
+            card_layout = QVBoxLayout()
+            card_layout.setContentsMargins(20, 20, 20, 20)
+            card_layout.setSpacing(12)
 
-            row = i // 2
-            col = (i % 2) * 2
+            title_label = QLabel(title_text)
+            title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            title_label.setObjectName("InfoCardTitle")
 
-            info_layout.addWidget(label, row, col)
-            info_layout.addWidget(value, row, col + 1)
+            value_label = QLabel("Memuat…")
+            value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            value_label.setObjectName("InfoCardValue")
+
+            card_layout.addWidget(title_label)
+            card_layout.addWidget(value_label)
+            card.setLayout(card_layout)
+
+            info_layout.addWidget(card, 1)
+            self.info_value_labels[key] = value_label
 
         system_layout.addWidget(system_title)
+        refresh_layout = QHBoxLayout()
+        refresh_layout.addStretch()
+        refresh_layout.addWidget(self.refresh_info_btn)
+        system_layout.addLayout(refresh_layout)
         system_layout.addLayout(info_layout)
         system_frame.setLayout(system_layout)
 
@@ -645,6 +668,10 @@ class AdminWindow(QWidget):
         self.close()
         self.logout_requested.emit()
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.load_system_info()
+
     # Placeholder methods for button functions
     def handle_show_list(self):
         # dialog = CustomStyledDialog(self, "Feature", "Show Employee List feature will be implemented here.")
@@ -654,6 +681,35 @@ class AdminWindow(QWidget):
     def print_id_card(self):
         dialog = CustomStyledDialog(self, "Fitur", "Fitur Cetak ID Card akan diimplementasikan di sini.")
         dialog.exec()
+
+    def load_system_info(self):
+        summary_queries = {
+            "employee_count": ("SELECT COUNT(*) AS total FROM users", ()),
+            "pending_requests": ("SELECT COUNT(*) AS total FROM request_histories WHERE status = ?", ("requested",)),
+            "photos_taken": ("SELECT COUNT(*) AS total FROM photo_histories", ())
+        }
+
+        for key, (query, params) in summary_queries.items():
+            value = self._fetch_summary_count(query, params)
+            label = self.info_value_labels.get(key)
+            if label:
+                if isinstance(value, int):
+                    label.setText(f"{value:,}".replace(",", "."))
+                else:
+                    label.setText(str(value))
+
+    def _fetch_summary_count(self, query, params=()):
+        try:
+            rows = db_manager.execute_query(query, params)
+            if rows:
+                value = rows[0].get("total")
+                if value is None:
+                    # Fallback to the first value in the row if alias missing
+                    value = next(iter(rows[0].values()), 0)
+                return int(value)
+        except Exception as exc:
+            logger.error("Gagal memuat ringkasan sistem: %s", exc)
+        return 0
 
     def get_stylesheet(self):
         return """
@@ -681,6 +737,40 @@ class AdminWindow(QWidget):
             font-size: 18px;
             font-weight: bold;
             margin-bottom: 15px;
+        }
+
+        #InfoCard {
+            background-color: #FFFFFF;
+            border: 2px solid #E60012;
+            border-radius: 16px;
+        }
+
+        #InfoCardTitle {
+            color: #333333;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        #InfoCardValue {
+            color: #E60012;
+            font-size: 36px;
+            font-weight: 800;
+        }
+
+        #InfoRefreshButton {
+            background-color: #E60012;
+            color: #FFFFFF;
+            font-weight: bold;
+            font-size: 12px;
+            border-radius: 8px;
+            padding: 8px 16px;
+        }
+        #InfoRefreshButton:hover {
+            background-color: #CC0010;
+        }
+        #InfoRefreshButton:pressed {
+            background-color: #99000C;
         }
 
         #FunctionButton {
