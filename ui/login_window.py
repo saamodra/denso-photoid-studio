@@ -22,6 +22,7 @@ class LoginPage(QWidget):
     def init_ui(self):
         """Inisialisasi user interface untuk halaman login."""
         # Layout utama untuk memusatkan kotak login di tengah jendela
+        self.setWindowTitle("Login Window")
         main_layout = QGridLayout(self)
         self.setLayout(main_layout)
 

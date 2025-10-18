@@ -384,6 +384,7 @@ class IDCardPhotoApp:
                 self.camera_window = CameraWindow()
                 self.camera_window.photos_captured.connect(self.on_photos_captured)
                 self.camera_window.logout_requested.connect(self.logout)
+                self.camera_window.back_to_dashboard_requested.connect(self.show_dashboard_window)
                 # Pass session information to camera window
                 self.camera_window.set_session_info(session_manager.get_current_user())
 
@@ -513,6 +514,7 @@ class IDCardPhotoApp:
             self.print_window = PrintWindow(self.processed_image, self.selected_photo)
             self.print_window.print_complete.connect(self.on_print_complete)
             self.print_window.back_requested.connect(self.show_processing_window)
+            self.print_window.logout_requested.connect(self.logout)
             self.print_window.show()
             self.current_window = self.print_window
 
