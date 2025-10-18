@@ -20,7 +20,7 @@ class RoleSelectionWindow(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Role Selection - " + APP_NAME)
-        self.setFixedSize(400, 300)
+        self.setMinimumSize(800, 600)
         self.setStyleSheet(self.get_stylesheet())
 
         # Label Judul
@@ -31,19 +31,24 @@ class RoleSelectionWindow(QWidget):
         # Tombol User
         self.user_btn = QPushButton(" Masuk sebagai User")
         self.user_btn.setIcon(QIcon.fromTheme("user"))  # Bisa ganti ke path ikon custom
-        self.user_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.user_btn.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        self.user_btn.setMinimumHeight(120)
+        self.user_btn.setMaximumWidth(320)
         self.user_btn.clicked.connect(self.handle_user_btn_click)
 
 
         # Tombol Admin
         self.admin_btn = QPushButton(" Masuk sebagai Admin")
         self.admin_btn.setIcon(QIcon.fromTheme("administrator"))  # Bisa ganti ke path ikon custom
-        self.admin_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.admin_btn.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        self.admin_btn.setMinimumHeight(120)
+        self.admin_btn.setMaximumWidth(320)
         self.admin_btn.clicked.connect(self.handle_admin_btn_click)
 
 
         # Layout tengah untuk tombol User & Admin
         btn_layout = QHBoxLayout()
+        btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         btn_layout.addWidget(self.user_btn)
         btn_layout.addWidget(self.admin_btn)
 
@@ -85,7 +90,7 @@ class RoleSelectionWindow(QWidget):
     def handle_admin_logout(self):
         if self.admin_window:
             self.admin_window.hide()
-        self.show()  # Show the role selection window again
+        self.showFullScreen()  # Show the role selection window again
 
     def get_stylesheet(self):
         return """
@@ -103,10 +108,10 @@ class RoleSelectionWindow(QWidget):
             background-color: #E60012;
             color: #FFFFFF;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 16px;
             border: none;
             border-radius: 12px;
-            padding: 15px;
+            padding: 12px 24px;
         }
         QPushButton:hover {
             background-color: #CC0010;

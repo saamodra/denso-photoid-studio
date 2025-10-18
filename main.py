@@ -118,7 +118,7 @@ class IDCardPhotoApp:
                 self.current_window.hide()
 
                 # If main window exists, just show it
-                self.login_window.show()
+                self.login_window.showFullScreen()
                 self.login_window.raise_()  # Bring to front
                 self.login_window.activateWindow()  # Activate window
 
@@ -130,18 +130,19 @@ class IDCardPhotoApp:
                 self.login_window.login_successful.connect(self.login_success)
 
                 # Ensure window appears on screen
-                self.login_window.show()
+                self.login_window.showFullScreen()
                 self.login_window.raise_()  # Bring to front
                 self.login_window.activateWindow()  # Activate window
 
                 # Force window to center and be visible
-                screen = self.app.primaryScreen()
-                if screen:
-                    screen_geometry = screen.availableGeometry()
-                    window_geometry = self.login_window.geometry()
-                    x = (screen_geometry.width() - window_geometry.width()) // 2
-                    y = (screen_geometry.height() - window_geometry.height()) // 2
-                    self.login_window.move(x, y)
+                if not self.login_window.isFullScreen():
+                    screen = self.app.primaryScreen()
+                    if screen:
+                        screen_geometry = screen.availableGeometry()
+                        window_geometry = self.login_window.geometry()
+                        x = (screen_geometry.width() - window_geometry.width()) // 2
+                        y = (screen_geometry.height() - window_geometry.height()) // 2
+                        self.login_window.move(x, y)
 
             self.current_window = self.login_window
             print(f"✅ Login window shown at position: {self.login_window.x()}, {self.login_window.y()}")
@@ -221,18 +222,19 @@ class IDCardPhotoApp:
             self.role_selection_window.logout_successful.connect(self.show_login_window)
 
             # Ensure window appears on screen
-            self.role_selection_window.show()
+            self.role_selection_window.showFullScreen()
             self.role_selection_window.raise_()  # Bring to front
             self.role_selection_window.activateWindow()  # Activate window
 
-            # Force window to center and be visible
-            screen = self.app.primaryScreen()
-            if screen:
-                screen_geometry = screen.availableGeometry()
-                window_geometry = self.role_selection_window.geometry()
-                x = (screen_geometry.width() - window_geometry.width()) // 2
-                y = (screen_geometry.height() - window_geometry.height()) // 2
-                self.role_selection_window.move(x, y)
+            # Force positioning only when not fullscreen (fallback for platforms that block full screen)
+            if not self.role_selection_window.isFullScreen():
+                screen = self.app.primaryScreen()
+                if screen:
+                    screen_geometry = screen.availableGeometry()
+                    window_geometry = self.role_selection_window.geometry()
+                    x = (screen_geometry.width() - window_geometry.width()) // 2
+                    y = (screen_geometry.height() - window_geometry.height()) // 2
+                    self.role_selection_window.move(x, y)
 
             self.current_window = self.role_selection_window
             print(f"✅ Role selection window shown at position: {self.role_selection_window.x()}, {self.role_selection_window.y()}")
@@ -249,31 +251,28 @@ class IDCardPhotoApp:
             from ui.admin_window import AdminWindow
 
             if self.admin_window:
-                # If admin window exists, just show it
-                self.admin_window.show()
-                self.admin_window.raise_()  # Bring to front
-                self.admin_window.activateWindow()  # Activate window
+                # If admin window exists, bring it back in fullscreen mode
+                self.admin_window.showFullScreen()
             else:
                 # Create new admin window
                 self.admin_window = AdminWindow()
-                self.admin_window.logout_requested.connect(self.show_role_selection_window) # keluar dari admin, masuk ke pilih role lagi
+                self.admin_window.logout_requested.connect(self.show_role_selection_window)  # keluar dari admin, masuk ke pilih role lagi
                 self.admin_window.show_employee_list.connect(self.show_employee_list_window)
 
-                # Ensure window appears on screen
-                self.admin_window.show()
-                self.admin_window.raise_()  # Bring to front
-                self.admin_window.activateWindow()  # Activate window
-                
-            # Di keluarin dari else, supaya full screen pasti
-            # 
-            #  Force window to center and be visible
-            screen = self.app.primaryScreen()
-            if screen:
-                screen_geometry = screen.availableGeometry()
-                window_geometry = self.admin_window.geometry()
-                x = (screen_geometry.width() - window_geometry.width()) // 2
-                y = (screen_geometry.height() - window_geometry.height()) // 2
-                self.admin_window.move(x, y)
+            # Ensure window is front-most and active
+            self.admin_window.showFullScreen()
+            self.admin_window.raise_()  # Bring to front
+            self.admin_window.activateWindow()  # Activate window
+
+            #  Force window to center only if not fullscreen
+            if not self.admin_window.isFullScreen():
+                screen = self.app.primaryScreen()
+                if screen:
+                    screen_geometry = screen.availableGeometry()
+                    window_geometry = self.admin_window.geometry()
+                    x = (screen_geometry.width() - window_geometry.width()) // 2
+                    y = (screen_geometry.height() - window_geometry.height()) // 2
+                    self.admin_window.move(x, y)
 
             # Close current window
             if self.current_window:
@@ -341,8 +340,8 @@ class IDCardPhotoApp:
             # 1. Buat instance jendela HANYA jika belum ada
             if not hasattr(self, 'employee_list_window') or not self.employee_list_window:
                 self.employee_list_window = EmployeeListPage()
-                # Hubungkan sinyal di sini saat pertama kali dibuat
-                self.employee_list_window.back_button.clicked.connect(self.show_admin_window)
+                # Hubungkan sinyal "kembali" ke tampilan admin
+                self.employee_list_window.back_button_click.connect(self.show_admin_window)
 
             # 2. Sembunyikan jendela yang aktif saat ini (jika ada)
             if hasattr(self, 'current_window') and self.current_window and self.current_window is not self.employee_list_window:
