@@ -18,6 +18,8 @@ from ui.camera_window import MainWindow as CameraWindow
 from ui.selection_window import SelectionWindow
 from ui.processing_window import ProcessingWindow
 from ui.print_window import PrintWindow
+from ui.loading_window import LoadingWindow
+
 from ui.dialogs.custom_dialog import CustomStyledDialog
 from config import APP_NAME, APP_VERSION, UI_SETTINGS
 from modules.session_manager import session_manager

@@ -76,10 +76,16 @@ class LoginPage(QWidget):
         container_layout.addSpacing(20)
 
         # Tombol Login
-        self.login_button = QPushButton("Login")
+        self.login_button = QPushButton("Masuk")
         self.login_button.setMinimumHeight(50)
         self.login_button.clicked.connect(self.check_login)
         container_layout.addWidget(self.login_button)
+
+        # Keluar Keluar
+        self.exit_button = QPushButton("Keluar")
+        self.exit_button.setMinimumHeight(50)
+        self.exit_button.clicked.connect(self.handle_exit)
+        container_layout.addWidget(self.exit_button)
 
         # Tempatkan kontainer login di tengah grid layout utama
         main_layout.addWidget(login_container, 0, 0, Qt.AlignmentFlag.AlignCenter)
@@ -211,6 +217,14 @@ class LoginPage(QWidget):
             }
 
         """)
+
+    def handle_exit(self):
+        """
+        Menangani klik tombol "Keluar".
+        Memanggil self.close() akan secara otomatis memicu closeEvent.
+        """
+        self.close()
+
 
     def closeEvent(self, event):
         """Handle window close event"""
