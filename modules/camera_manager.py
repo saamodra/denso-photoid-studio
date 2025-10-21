@@ -378,14 +378,15 @@ class CameraManager:
         if self.camera_thread and self.camera_thread.isRunning():
             self.stop_preview()
 
-        # --- PERBAIKAN 3: Prioritaskan backend CAP_DSHOW untuk Windows ---
         if self.current_camera_index < len(self.available_cameras):
-            backend = self.available_cameras[self.current_camera_index].get('backend', cv2.CAP_ANY)
+            camera_info = self.available_cameras[self.current_camera_index]
+            backend = camera_info.get('backend', cv2.CAP_ANY)
+            camera_index = camera_info.get('index', self.current_camera_index)
         else:
             # Fallback jika tidak ada kamera terpilih
             return
 
-        self.camera_thread = CameraThread(self.current_camera_index, backend)
+        self.camera_thread = CameraThread(camera_index, backend)
         if frame_callback:
             self.camera_thread.frame_ready.connect(frame_callback)
         self.camera_thread.frame_ready.connect(self._update_current_frame)

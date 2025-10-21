@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QPushButton, QLabel, QVBoxLayout,
     QHBoxLayout, QGridLayout, QFrame, QDialog,
-    QLineEdit, QComboBox, QSpinBox, QFileDialog, QMessageBox
+    QLineEdit, QComboBox, QSpinBox, QFileDialog, QMessageBox, QSizePolicy
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 import logging
@@ -113,13 +113,9 @@ class SettingsDialog(QDialog):
 
         layout = QVBoxLayout()
 
-        # Save Path Setting
-        save_path_frame = QFrame()
-        save_path_frame.setObjectName("SettingFrame")
-        save_path_layout = QVBoxLayout()
-
+        # Save Path Setting components
         save_path_label = QLabel("Atur Path untuk Menyimpan Gambar:")
-        save_path_label.setObjectName("SettingLabel")
+        save_path_label.setObjectName("FieldLabel")
 
         path_layout = QHBoxLayout()
         self.save_path_input = QLineEdit()
@@ -129,13 +125,9 @@ class SettingsDialog(QDialog):
         browse_btn.setMinimumWidth(100)
         browse_btn.clicked.connect(self.browse_save_path)
 
-        path_layout.addWidget(self.save_path_input, 1)  # Give more space to input
-        path_layout.addSpacing(10)  # Add spacing between input and button
-        path_layout.addWidget(browse_btn, 0)  # Fixed size for button
-
-        save_path_layout.addWidget(save_path_label)
-        save_path_layout.addLayout(path_layout)
-        save_path_frame.setLayout(save_path_layout)
+        path_layout.addWidget(self.save_path_input, 1)
+        path_layout.addSpacing(10)
+        path_layout.addWidget(browse_btn, 0)
 
         # Default Camera Setting
         camera_frame = QFrame()
@@ -149,6 +141,7 @@ class SettingsDialog(QDialog):
         camera_selection_layout = QHBoxLayout()
         self.camera_combo = QComboBox()
         self.camera_combo.setMinimumWidth(300)
+        self.camera_combo.currentIndexChanged.connect(self.handle_camera_selection_changed)
 
         refresh_camera_btn = QPushButton("🔄 Refresh")
         refresh_camera_btn.setObjectName("RefreshButton")
@@ -158,19 +151,37 @@ class SettingsDialog(QDialog):
         camera_selection_layout.addWidget(self.camera_combo, 1)
         camera_selection_layout.addWidget(refresh_camera_btn, 0)
 
+        # Camera preview area
+        camera_preview_frame = QFrame()
+        camera_preview_frame.setObjectName("CameraPreviewFrame")
+        camera_preview_layout = QVBoxLayout()
+        camera_preview_layout.setContentsMargins(0, 12, 0, 0)
+        camera_preview_layout.setSpacing(8)
+
+        preview_label = QLabel("Pratinjau Kamera:")
+        preview_label.setObjectName("PreviewLabel")
+
+        self._camera_preview_placeholder = "Pratinjau kamera akan muncul di sini."
+        self.camera_preview_label = QLabel(self._camera_preview_placeholder)
+        self.camera_preview_label.setObjectName("CameraPreviewLabel")
+        self.camera_preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.camera_preview_label.setMinimumSize(320, 200)
+        self.camera_preview_label.setWordWrap(True)
+        self._preview_active = False
+
+        camera_preview_layout.addWidget(preview_label)
+        camera_preview_layout.addWidget(self.camera_preview_label)
+        camera_preview_frame.setLayout(camera_preview_layout)
+
         camera_layout.addWidget(camera_label)
         camera_layout.addLayout(camera_selection_layout)
+        camera_layout.addWidget(camera_preview_frame)
         camera_frame.setLayout(camera_layout)
 
-        # Default Printer Setting
-        printer_frame = QFrame()
-        printer_frame.setObjectName("SettingFrame")
-        printer_layout = QVBoxLayout()
-
-        printer_label = QLabel("Atur Printer Default:")
-        printer_label.setObjectName("SettingLabel")
-
         # Printer selection with refresh button
+        printer_label = QLabel("Atur Printer Default:")
+        printer_label.setObjectName("FieldLabel")
+
         printer_selection_layout = QHBoxLayout()
         self.printer_combo = QComboBox()
         self.printer_combo.setMinimumWidth(300)
@@ -183,41 +194,59 @@ class SettingsDialog(QDialog):
         printer_selection_layout.addWidget(self.printer_combo, 1)
         printer_selection_layout.addWidget(refresh_printer_btn, 0)
 
-        printer_layout.addWidget(printer_label)
-        printer_layout.addLayout(printer_selection_layout)
-        printer_frame.setLayout(printer_layout)
-
         # Photos to Take Setting
-        photos_frame = QFrame()
-        photos_frame.setObjectName("SettingFrame")
-        photos_layout = QVBoxLayout()
-
-        photos_label = QLabel("Jumlah Foto yang Diambil:")
-        photos_label.setObjectName("SettingLabel")
-
         self.photos_spin = QSpinBox()
         self.photos_spin.setRange(1, 10)
         self.photos_spin.setValue(4)
+        self.photos_spin.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.photos_spin.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        photos_layout.addWidget(photos_label)
-        photos_layout.addWidget(self.photos_spin)
-        photos_frame.setLayout(photos_layout)
+        photos_label = QLabel("Jumlah Foto yang Diambil:")
+        photos_label.setObjectName("FieldLabel")
 
         # Capture Delay Setting
-        delay_frame = QFrame()
-        delay_frame.setObjectName("SettingFrame")
-        delay_layout = QVBoxLayout()
-
-        delay_label = QLabel("Jeda Antar Foto (detik):")
-        delay_label.setObjectName("SettingLabel")
-
         self.delay_spin = QSpinBox()
         self.delay_spin.setRange(1, 10)
         self.delay_spin.setValue(2)
+        self.delay_spin.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.delay_spin.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        delay_layout.addWidget(delay_label)
-        delay_layout.addWidget(self.delay_spin)
-        delay_frame.setLayout(delay_layout)
+        delay_label = QLabel("Jeda Antar Foto (detik):")
+        delay_label.setObjectName("FieldLabel")
+
+        # Combined general settings frame
+        general_frame = QFrame()
+        general_frame.setObjectName("SettingFrame")
+        general_layout = QGridLayout()
+        general_layout.setContentsMargins(0, 0, 0, 0)
+        general_layout.setHorizontalSpacing(18)
+        general_layout.setVerticalSpacing(12)
+
+        general_title = QLabel("Pengaturan Umum")
+        general_title.setObjectName("SettingLabel")
+
+        general_layout.addWidget(general_title, 0, 0, 1, 2)
+        general_layout.addWidget(save_path_label, 1, 0, 1, 2)
+        general_layout.addLayout(path_layout, 2, 0, 1, 2)
+        general_layout.addWidget(printer_label, 3, 0, 1, 2)
+        general_layout.addLayout(printer_selection_layout, 4, 0, 1, 2)
+
+        photos_column = QVBoxLayout()
+        photos_column.setSpacing(6)
+        photos_column.addWidget(photos_label)
+        photos_column.addWidget(self.photos_spin)
+
+        delay_column = QVBoxLayout()
+        delay_column.setSpacing(6)
+        delay_column.addWidget(delay_label)
+        delay_column.addWidget(self.delay_spin)
+
+        general_layout.addLayout(photos_column, 5, 0)
+        general_layout.addLayout(delay_column, 5, 1)
+        general_layout.setColumnStretch(0, 1)
+        general_layout.setColumnStretch(1, 1)
+
+        general_frame.setLayout(general_layout)
 
         # Buttons
         button_layout = QHBoxLayout()
@@ -233,11 +262,8 @@ class SettingsDialog(QDialog):
         button_layout.addWidget(cancel_btn)
         button_layout.addWidget(save_btn)
 
-        layout.addWidget(save_path_frame)
+        layout.addWidget(general_frame)
         layout.addWidget(camera_frame)
-        layout.addWidget(printer_frame)
-        layout.addWidget(photos_frame)
-        layout.addWidget(delay_frame)
         layout.addStretch()
         layout.addLayout(button_layout)
 
@@ -279,7 +305,9 @@ class SettingsDialog(QDialog):
 
     def load_cameras(self):
         """Load real camera devices from system"""
+        cameras = []
         try:
+            self.camera_combo.blockSignals(True)
             self.camera_combo.clear()
 
             # Force camera re-detection
@@ -288,9 +316,9 @@ class SettingsDialog(QDialog):
 
             print(f"Loading {len(cameras)} cameras for admin settings")
 
-            for camera in cameras:
+            for idx, camera in enumerate(cameras):
                 camera_text = f"{camera['name']} ({camera['resolution'][0]}x{camera['resolution'][1]})"
-                self.camera_combo.addItem(camera_text)
+                self.camera_combo.addItem(camera_text, idx)
                 print(f"  Added camera: {camera_text}")
 
             if not cameras:
@@ -301,6 +329,20 @@ class SettingsDialog(QDialog):
             print(f"Error loading cameras: {e}")
             self.camera_combo.clear()
             self.camera_combo.addItem("Kesalahan memuat kamera")
+            self.handle_camera_selection_changed(-1)
+            return
+        finally:
+            self.camera_combo.blockSignals(False)
+
+        if cameras:
+            # Restore previously saved camera if possible
+            self.load_camera_setting()
+            if self.camera_combo.currentIndex() == -1 and self.camera_combo.count() > 0:
+                self.camera_combo.setCurrentIndex(0)
+            # Ensure preview reflects current selection
+            self.handle_camera_selection_changed(self.camera_combo.currentIndex())
+        else:
+            self.handle_camera_selection_changed(-1)
 
     def load_printers(self):
         """Load real printer devices from system"""
@@ -328,9 +370,9 @@ class SettingsDialog(QDialog):
 
     def refresh_cameras(self):
         """Refresh camera list"""
+        self.stop_camera_preview(show_placeholder=False)
+        self._set_preview_message("Memuat ulang daftar kamera…")
         self.load_cameras()
-        # Try to restore previous selection if it still exists
-        self.load_camera_setting()
 
     def refresh_printers(self):
         """Refresh printer list"""
@@ -375,6 +417,63 @@ class SettingsDialog(QDialog):
                         return
         except Exception as e:
             print(f"Error loading printer setting: {e}")
+
+    def handle_camera_selection_changed(self, index):
+        """Update camera preview when selection changes"""
+        cameras = self.camera_manager.get_available_cameras()
+        if index < 0 or not cameras:
+            self.stop_camera_preview(show_placeholder=True, message="Kamera tidak tersedia.")
+            return
+
+        camera_position = self.camera_combo.itemData(index)
+        if camera_position is None:
+            camera_position = index
+
+        if camera_position is None or camera_position < 0 or camera_position >= len(cameras):
+            self.stop_camera_preview(show_placeholder=True, message="Kamera tidak tersedia.")
+            return
+
+        self._preview_active = False
+
+        if not self.camera_manager.switch_camera(camera_position):
+            self._preview_active = False
+            self._set_preview_message("Gagal mengakses kamera terpilih.")
+            return
+
+        self._preview_active = True
+        self._set_preview_message("Memuat pratinjau…")
+        self.camera_manager.start_preview(self.update_camera_preview)
+
+    def update_camera_preview(self, frame):
+        """Render incoming camera frame into preview label"""
+        if frame is None or not self._preview_active:
+            return
+
+        pixmap = self.camera_manager.frame_to_qpixmap(
+            frame,
+            size=(self.camera_preview_label.width(), self.camera_preview_label.height()),
+            maintain_aspect_ratio=True,
+        )
+        if pixmap:
+            self.camera_preview_label.setPixmap(pixmap)
+            self.camera_preview_label.setText("")
+
+    def stop_camera_preview(self, show_placeholder=True, message=None):
+        """Stop running camera preview and optionally show placeholder message"""
+        self._preview_active = False
+        self.camera_manager.stop_preview()
+        if show_placeholder:
+            self._set_preview_message(message or self._camera_preview_placeholder)
+
+    def _set_preview_message(self, message):
+        """Display placeholder text inside camera preview area"""
+        self.camera_preview_label.clear()
+        self.camera_preview_label.setText(message)
+
+    def closeEvent(self, event):
+        """Ensure camera preview thread stops when dialog closes"""
+        self.stop_camera_preview(show_placeholder=False)
+        super().closeEvent(event)
 
     def show_message_box(self, title, message, icon_type):
         """Show a styled message box with proper text visibility"""
@@ -427,7 +526,8 @@ class SettingsDialog(QDialog):
     def get_settings_stylesheet(self):
         return """
         QDialog {
-            background-color: #F5F5F5;
+            background-color: #FFFFFF;
+            color: #333333;
         }
 
         #SettingFrame {
@@ -435,7 +535,7 @@ class SettingsDialog(QDialog):
             border: 1px solid #DDDDDD;
             border-radius: 8px;
             margin: 8px;
-            padding: 15px;
+            padding: 12px;
         }
 
         #SettingLabel {
@@ -443,6 +543,34 @@ class SettingsDialog(QDialog):
             font-weight: bold;
             font-size: 14px;
             margin-bottom: 8px;
+        }
+
+        #FieldLabel {
+            color: #333333;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        #PreviewLabel {
+            color: #E60012;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        #CameraPreviewFrame {
+            background-color: #FFFFFF;
+            border: 1px solid #E1E1E1;
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        #CameraPreviewLabel {
+            background-color: #FAFAFA;
+            border: 2px dashed #E60012;
+            border-radius: 12px;
+            color: #333333;
+            font-size: 13px;
+            padding: 16px;
         }
 
         QLineEdit, QComboBox, QSpinBox {
