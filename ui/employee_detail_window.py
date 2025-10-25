@@ -7,6 +7,8 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QPixmap
 
 from modules.database import db_manager
+from modules.print_manager import PrintManager
+from ui.dialogs.custom_dialog import CustomStyledDialog
 
 class EmployeeDetailPage(QDialog):
     """
@@ -17,8 +19,18 @@ class EmployeeDetailPage(QDialog):
         super().__init__(parent)
         self.employee_data = employee_data
         
+        # --- Tambahkan instance PrintManager ---
+        self.print_manager = PrintManager()
+
         # Get image save path from database configuration
         self.PHOTOS_DIR = db_manager.get_app_config('image_save_path')
+
+        if not self.PHOTOS_DIR:
+             # Tentukan path default, misal subfolder 'data_karyawan' di direktori aplikasi
+             base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # Asumsi struktur project
+             self.PHOTOS_DIR = os.path.join(base_path, 'data_karyawan', 'photos')
+             print(f"⚠️ Peringatan: 'image_save_path' tidak ditemukan di config. Menggunakan default: {self.PHOTOS_DIR}")
+             os.makedirs(self.PHOTOS_DIR, exist_ok=True) # Pastikan folder ada
         
         self.setWindowTitle(f"Detail Karyawan - {self.employee_data.get('name', 'N/A')}")
         self.setMinimumSize(1000, 600)
@@ -173,15 +185,20 @@ class EmployeeDetailPage(QDialog):
         # Muat gambar original
         photo_filename = self.employee_data.get("photo_filename")
         if photo_filename:
-            # Ganti PHOTOS_DIR dengan path folder foto asli Anda
-            photo_path = os.path.join(self.PHOTOS_DIR, f"original/{photo_filename}")
+            # Pastikan path folder foto asli Anda benar
+            photo_path = os.path.join(self.PHOTOS_DIR, f"original/{photo_filename}") # Konsisten dengan struktur Anda
             self.set_image_preview(self.original_photo_label, photo_path)
+        else:
+             self.original_photo_label.setText("Foto original\ntidak ditemukan") # Pesan lebih jelas
 
         # Muat gambar kartu ID
         card_filename = self.employee_data.get("card_filename")
         if card_filename:
-            card_path = os.path.join(self.PHOTOS_DIR, f"card/{card_filename}")
+            # Pastikan path folder kartu ID Anda benar
+            card_path = os.path.join(self.PHOTOS_DIR, f"card/{card_filename}") # Konsisten dengan struktur Anda
             self.set_image_preview(self.card_photo_label, card_path)
+        else:
+            self.card_photo_label.setText("File Kartu ID\ntidak ditemukan") # Pesan lebih jelas
 
     def set_image_preview(self, label_widget, image_path):
         """Menampilkan gambar di QLabel dengan ukuran yang pas."""
@@ -195,10 +212,68 @@ class EmployeeDetailPage(QDialog):
             label_widget.setText(f"File tidak ditemukan:\n{os.path.basename(image_path)}")
 
     def print_card_action(self):
-        """Fungsi placeholder untuk aksi print kartu ID."""
-        # TODO: Implementasikan logika untuk print kartu ID di sini
-        # Contoh: menggunakan QPrinter atau memanggil library lain.
-        QMessageBox.information(self, "Informasi", "Fungsi 'Print ID Card' belum diimplementasikan.")
+        """Mencetak kartu ID karyawan yang sedang ditampilkan."""
+        card_filename = self.employee_data.get("card_filename")
+
+        if not card_filename:
+            CustomStyledDialog(self, "Error Cetak", "Nama file kartu ID tidak ditemukan untuk karyawan ini.").exec()
+            return
+
+        # Pastikan path folder kartu ID Anda benar
+        card_path = os.path.join(self.PHOTOS_DIR, f"card/{card_filename}")
+
+        if not os.path.exists(card_path):
+            CustomStyledDialog(self, "Error Cetak", f"File kartu ID tidak ditemukan di:\n{card_path}").exec()
+            return
+
+        # --- Dapatkan nama printer target ---
+        # Opsi 1: Dari konfigurasi database (direkomendasikan)
+        target_printer_name = db_manager.get_app_config('default_printer')
+
+        # Opsi 2: Jika tidak ada di config, coba gunakan default dari PrintManager
+        if not target_printer_name:
+             target_printer_name = self.print_manager.default_printer
+             print(f"Menggunakan printer default yang terdeteksi: {target_printer_name}")
+
+        # Opsi 3: Jika masih tidak ada, minta pengguna memilih (lebih kompleks)
+        # Atau tampilkan error jika tidak ada printer sama sekali
+        if not target_printer_name:
+             printers = self.print_manager.get_available_printers()
+             if not printers:
+                  CustomStyledDialog(self, "Error Cetak", "Tidak ada printer yang terdeteksi atau dikonfigurasi.").exec()
+                  return
+             else:
+                  # Jika ada printer tapi tidak ada default, ambil yang pertama sebagai fallback
+                  target_printer_name = printers[0]['name']
+                  print(f"Peringatan: Tidak ada printer kartu default. Menggunakan printer pertama: {target_printer_name}")
+                  # Anda mungkin ingin menampilkan dialog pemilihan printer di sini
+
+        # --- Konfirmasi sebelum mencetak ---
+        confirm_dialog = CustomStyledDialog(
+            self,
+            title="Konfirmasi Cetak",
+            message=f"Anda akan mencetak kartu ID untuk:\n"
+                    f"Nama: {self.employee_data.get('name', 'N/A')}\n"
+                    f"NPK: {self.employee_data.get('npk', 'N/A')}\n\n"
+                    f"Ke Printer: {target_printer_name}\n\nLanjutkan?",
+            buttons=[("Batal", QDialog.DialogCode.Rejected), ("Cetak", QDialog.DialogCode.Accepted)]
+        )
+        confirm_dialog.set_cancel_button(0)
+
+        if confirm_dialog.exec() == QDialog.DialogCode.Accepted:
+            # --- Panggil fungsi print dari PrintManager ---
+            print(f"Mencoba mencetak {card_path} ke {target_printer_name}...")
+            # Gunakan print_image_system karena memiliki logika Fargo
+            success = self.print_manager.print_image_system(
+                image=card_path,
+                printer_name=target_printer_name,
+                copies=1 # Biasanya hanya 1 kartu per cetak
+            )
+
+            if success:
+                CustomStyledDialog(self, "Cetak Berhasil", f"Kartu ID untuk {self.employee_data.get('name')} telah dikirim ke printer.").exec()
+            else:
+                CustomStyledDialog(self, "Cetak Gagal", f"Gagal mengirim kartu ID ke printer.\nPeriksa log aplikasi atau status printer.").exec()
 
 # --- Untuk Menjalankan Jendela Ini Secara Mandiri (Testing) ---
 if __name__ == '__main__':

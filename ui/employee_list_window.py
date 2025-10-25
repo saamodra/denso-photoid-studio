@@ -302,8 +302,6 @@ class EmployeeListPage(QWidget):
     def load_data(self):
         """Memuat data dummy. Ganti fungsi ini dengan koneksi database Anda."""
         # TODO: Ganti bagian ini dengan query ke database Anda
-        self.show_styled_messagebox("Error", f"Memuat data dummy. Ganti", icon=QMessageBox.Icon.Critical)
-        
         self.all_employees = db_manager.get_all_users_with_request_histories()
         
         # for i in range(1, 101):
@@ -369,7 +367,7 @@ class EmployeeListPage(QWidget):
                     status_warna_teks = "white"
                     status_warna_bg = "#9E9E9E"  # abu-abu
 
-            status_item = QTableWidgetItem(str(employee.get("request_id", "")) + " " +status_teks)
+            status_item = QTableWidgetItem(status_teks)
             status_item.setForeground(QColor(status_warna_teks))  # warna teks
             status_item.setBackground(QColor(status_warna_bg))    # warna latar
             

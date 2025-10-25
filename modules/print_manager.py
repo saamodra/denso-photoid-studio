@@ -12,6 +12,11 @@ from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtWidgets import QApplication
 from config import PRINT_SETTINGS
 
+import win32ui
+import win32print
+import win32con
+from PIL import Image, ImageWin
+
 
 class PrintManager:
     """Main print management class"""
@@ -44,9 +49,18 @@ class PrintManager:
                 import win32print
                 printer_list = win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL)
                 for printer in printer_list:
+                    # printers.append({
+                    #     'name': printer[2],
+                    #     'status': 'available'
+                    # })
+                    name = printer[2]
+                    status = 'available'
+                    # Detect HID Fargo printer specifically
+                    if 'DTC1250' in name.upper():
+                        status = 'HID Fargo detected'
                     printers.append({
-                        'name': printer[2],
-                        'status': 'available'
+                        'name': name,
+                        'status': status
                     })
 
             # For Linux
@@ -85,8 +99,10 @@ class PrintManager:
                 return True
         return False
 
+    # In class PrintManager
+
     def prepare_image_for_printing(self, image, copies=1):
-        """Prepare image for printing with proper scaling"""
+        """Prepare image for printing, resizing to exact ID card pixel dimensions."""
         if isinstance(image, str):
             image = Image.open(image)
 
@@ -94,22 +110,67 @@ class PrintManager:
         if image.mode != 'RGB':
             image = image.convert('RGB')
 
-        # Scale to proper DPI for printing
-        dpi = self.print_settings['dpi']
+        # Target DPI for the card printer (Confirm this for your specific model if needed)
+        dpi = self.print_settings.get('card_printer_dpi', 300)
 
-        # Calculate ID card size in pixels
-        width_mm, height_mm = self.print_settings['id_card_size']
+        # Standard CR80 ID card size in mm (approx 85.6mm x 53.98mm)
+        # Adjust if your card size or required print area differs slightly
+        width_mm = self.print_settings['id_card_size'][0] # e.g., 85.6
+        height_mm = self.print_settings['id_card_size'][1] # e.g., 53.98
+
+        # Calculate exact target pixel dimensions
+        # IMPORTANT: Ensure width_mm corresponds to width_px, height_mm to height_px
+        # Check printer driver settings for expected orientation (Portrait vs Landscape input)
+        # Assuming the input image *should be* landscape to print correctly on a portrait card feed
+        # If the printer expects portrait input, swap width_px and height_px calculations.
         width_px = int(width_mm * dpi / 25.4)
         height_px = int(height_mm * dpi / 25.4)
+        
+        # Let's assume CR80: 85.6mm x 53.98mm at 300 DPI
+        # width_px = int(85.6 * 300 / 25.4)  # ~1011 pixels
+        # height_px = int(53.98 * 300 / 25.4) # ~638 pixels
+        # If your card is printed portrait first, maybe dimensions are swapped?
+        # width_px = int(53.98 * 300 / 25.4) # ~638
+        # height_px = int(85.6 * 300 / 25.4) # ~1011
 
-        # Resize image to exact ID card dimensions
+        print(f"Resizing image for printer: Target {width_px}x{height_px} px at {dpi} DPI")
+
+        # Resize image to the *exact* target dimensions.
+        # If the input image aspect ratio doesn't match, it will be stretched.
+        # Consider adding cropping here if you need to maintain aspect ratio from original.
         print_image = image.resize((width_px, height_px), Image.Resampling.LANCZOS)
 
-        # Create print layout for multiple copies
-        if copies > 1:
-            print_image = self._create_multi_copy_layout(print_image, copies)
+        # --- REMOVE multi-copy layout for single card printing ---
+        # Card printers typically print one card at a time.
+        # if copies > 1:
+        #     print_image = self._create_multi_copy_layout(print_image, copies)
 
         return print_image
+    # def prepare_image_for_printing(self, image, copies=1):
+    #     """Prepare image for printing with proper scaling"""
+    #     if isinstance(image, str):
+    #         image = Image.open(image)
+
+    #     # Convert to RGB if necessary
+    #     if image.mode != 'RGB':
+    #         image = image.convert('RGB')
+
+    #     # Scale to proper DPI for printing
+    #     dpi = self.print_settings['dpi']
+
+    #     # Calculate ID card size in pixels
+    #     width_mm, height_mm = self.print_settings['id_card_size']
+    #     width_px = int(width_mm * dpi / 25.4)
+    #     height_px = int(height_mm * dpi / 25.4)
+
+    #     # Resize image to exact ID card dimensions
+    #     print_image = image.resize((width_px, height_px), Image.Resampling.LANCZOS)
+
+    #     # Create print layout for multiple copies
+    #     if copies > 1:
+    #         print_image = self._create_multi_copy_layout(print_image, copies)
+
+    #     return print_image
 
     def _create_multi_copy_layout(self, image, copies):
         """Create layout for multiple copies"""
@@ -208,32 +269,82 @@ class PrintManager:
             print(f"Error in Qt printing: {e}")
             return False
 
+    # def print_image_system(self, image, printer_name=None, copies=1):
+    #     """Print image using system print command"""
+    #     try:
+    #         # Save image to temporary file
+    #         temp_path = self._save_temp_image(image)
+
+    #         # Check if this is a Fargo printer
+    #         if printer_name and ('DTC1250' in printer_name.upper()):
+    #             print_image = self.prepare_image_for_printing(temp_path, copies)
+    #             path = self._save_temp_image(print_image, suffix='_fargo')
+    #             result = self.print_to_hid_fargo(path, printer_name)
+    #             return result
+
+    #         # Prepare image for printing
+    #         print_image = self.prepare_image_for_printing(temp_path, copies)
+    #         print_path = self._save_temp_image(print_image, suffix='_print')
+
+    #         # Print using system command
+    #         success = self._system_print_command(print_path, printer_name)
+
+    #         # Cleanup temp files
+    #         try:
+    #             os.remove(temp_path)
+    #             os.remove(print_path)
+    #         except:
+    #             pass
+
+    #         return success
+
+    #     except Exception as e:
+    #         print(f"Error printing with system command: {e}")
+    #         return False
+
+    # In class PrintManager
+
     def print_image_system(self, image, printer_name=None, copies=1):
-        """Print image using system print command"""
+        """Print image using system print command or specific Fargo handler."""
+        temp_original_path = None
+        temp_prepared_path = None
         try:
-            # Save image to temporary file
-            temp_path = self._save_temp_image(image)
+            # Save original PIL image/path to a temporary file IF it's not already a path
+            if not isinstance(image, str):
+                temp_original_path = self._save_temp_image(image, suffix='_orig')
+                image_to_prepare = temp_original_path
+            else:
+                image_to_prepare = image # Use the path directly
 
-            # Prepare image for printing
-            print_image = self.prepare_image_for_printing(temp_path, copies)
-            print_path = self._save_temp_image(print_image, suffix='_print')
+            is_fargo = printer_name and ('DTC1250' in printer_name.upper())
 
-            # Print using system command
-            success = self._system_print_command(print_path, printer_name)
+            # Prepare image specifically for the target (Fargo or general)
+            # For Fargo, ensure prepare_image_for_printing resizes to exact pixels
+            print_image_pil = self.prepare_image_for_printing(image_to_prepare, copies if not is_fargo else 1)
+            temp_prepared_path = self._save_temp_image(print_image_pil, suffix='_prepared')
 
-            # Cleanup temp files
-            try:
-                os.remove(temp_path)
-                os.remove(print_path)
-            except:
-                pass
-
-            return success
+            if is_fargo:
+                print(f"Detected Fargo printer '{printer_name}'. Using dedicated print function.")
+                result = self.print_to_hid_fargo(temp_prepared_path, printer_name)
+                return result
+            else:
+                # Print using generic system command (might still need adjustments)
+                print(f"Using generic system print command for '{printer_name}'.")
+                success = self._system_print_command(temp_prepared_path, printer_name)
+                return success
 
         except Exception as e:
-            print(f"Error printing with system command: {e}")
+            print(f"❌ Error in print_image_system: {e}")
             return False
-
+        finally:
+            # Cleanup temporary files
+            for p in [temp_original_path, temp_prepared_path]:
+                if p and os.path.exists(p):
+                    try:
+                        os.remove(p)
+                    except Exception as e_rem:
+                        print(f"Warning: Could not remove temp file {p}: {e_rem}")
+                        
     def _save_temp_image(self, image, suffix=''):
         """Save image to temporary file"""
         with tempfile.NamedTemporaryFile(delete=False, suffix=f'{suffix}.png') as temp_file:
@@ -276,6 +387,74 @@ class PrintManager:
         except Exception as e:
             print(f"Error executing print command: {e}")
             return False
+ 
+    def print_to_hid_fargo(self, image_path, printer_name=None):
+        """Send pre-sized image directly to HID Fargo printer using pixel coordinates."""
+        print(f"Attempting to print {os.path.basename(image_path)} to HID Fargo: {printer_name}")
+
+        hprinter = None
+        hdc = None
+        try:
+            if not printer_name:
+                printer_name = self.default_printer
+            if not printer_name:
+                raise ValueError("No printer specified or default printer set.")
+
+            # Load the image (it should already be correctly sized by prepare_image...)
+            img = Image.open(image_path)
+            img = img.convert("RGB") # Ensure RGB
+            img_width, img_height = img.size
+            print(f"Image dimensions being sent to printer: {img_width}x{img_height} pixels")
+
+            # --- Printer Setup ---
+            hprinter = win32print.OpenPrinter(printer_name)
+            # Optional: Get DEVMODE to potentially set specific options like orientation later
+            # devmode = win32print.GetPrinter(hprinter, 2)['pDevMode']
+
+            hdc = win32ui.CreateDC()
+            hdc.CreatePrinterDC(printer_name)
+
+            # --- Use MM_TEXT (Pixel Mode) ---
+            hdc.SetMapMode(win32con.MM_TEXT)
+
+            # --- Start Print Job ---
+            hdc.StartDoc(f"PhotoID Print - {os.path.basename(image_path)}")
+            hdc.StartPage()
+
+            # --- Prepare Bitmap ---
+            # Convert PIL image to device-independent bitmap (DIB)
+            dib = ImageWin.Dib(img)
+
+            # --- Draw Image at (0,0) with exact dimensions ---
+            # Since map mode is MM_TEXT, coordinates are pixels.
+            # Draw from source (0,0) to (img_width, img_height)
+            # onto destination (0,0) to (img_width, img_height) on the printer DC.
+            dib.draw(hdc.GetHandleOutput(), (0, 0, img_width, img_height))
+            print(f"Drawing image at (0, 0) with size {img_width}x{img_height} using MM_TEXT.")
+
+            # --- Finish Print Job ---
+            hdc.EndPage()
+            hdc.EndDoc()
+            print("✅ Print job successfully sent to spooler for HID Fargo.")
+            return True
+
+        except Exception as e:
+            print(f"❌ Error printing to HID Fargo: {e}")
+            import traceback
+            traceback.print_exc() # Print full traceback for detailed debugging
+            return False
+        finally:
+            # --- Cleanup ---
+            if hdc:
+                try:
+                    hdc.DeleteDC()
+                except Exception as e_del:
+                    print(f"Error deleting DC: {e_del}")
+            if hprinter:
+                try:
+                    win32print.ClosePrinter(hprinter)
+                except Exception as e_close:
+                    print(f"Error closing printer handle: {e_close}")
 
     def create_print_preview(self, image, copies=1):
         """Create print preview image"""
