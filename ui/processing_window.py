@@ -12,6 +12,7 @@ from PIL import Image
 import os
 import tempfile
 from modules.image_processor import ImageProcessor
+from modules.session_manager import session_manager
 from config import UI_SETTINGS
 
 
@@ -21,11 +22,12 @@ class ProcessingThread(QThread):
     processing_complete = pyqtSignal(object)  # PIL Image
     error_occurred = pyqtSignal(str)
 
-    def __init__(self, image_path, background_type, processor):
+    def __init__(self, image_path, background_type, processor, user_info=None):
         super().__init__()
         self.image_path = image_path
         self.background_type = background_type
         self.processor = processor
+        self.user_info = user_info
 
     def run(self):
         """Run processing in background"""
@@ -37,7 +39,11 @@ class ProcessingThread(QThread):
             self.progress_update.emit(50)
 
             # Apply new background
-            final_image = self.processor.apply_id_background(no_bg_image, self.background_type)
+            final_image = self.processor.apply_id_background(
+                no_bg_image,
+                self.background_type,
+                user_info=self.user_info
+            )
             self.progress_update.emit(90)
 
             # Complete
@@ -157,6 +163,7 @@ class ProcessingWindow(QMainWindow):
         self.processor = ImageProcessor()
         self.processing_thread = None
         self.processed_image = None
+        self.current_user = session_manager.get_current_user()
         self.current_background = 'denso_id_card'  # Default to denso template
         self.background_options = []
         self.init_ui()
@@ -211,6 +218,7 @@ class ProcessingWindow(QMainWindow):
 
         # Apply styling
         self.apply_style()
+        self.update_user_info()
 
     def create_preview_section(self):
         """Create before/after preview section"""
@@ -433,6 +441,20 @@ class ProcessingWindow(QMainWindow):
             # Update current_background to match the first selected option
             self.current_background = self.background_options[0].background_type
 
+    def set_session_info(self, user_data):
+        """Set session information from outside the window"""
+        self.update_user_info(user_data)
+
+    def update_user_info(self, user_data=None):
+        """Refresh stored user information"""
+        if user_data:
+            self.current_user = user_data
+            return
+
+        user = session_manager.get_current_user()
+        if user:
+            self.current_user = user
+
     def on_background_selected(self, background_type):
         """Handle background selection"""
         # Clear previous selection
@@ -467,7 +489,8 @@ class ProcessingWindow(QMainWindow):
         self.processing_thread = ProcessingThread(
             self.photo_path,
             self.current_background,
-            self.processor
+            self.processor,
+            user_info=self.current_user
         )
         self.processing_thread.progress_update.connect(self.update_progress)
         self.processing_thread.processing_complete.connect(self.on_processing_complete)

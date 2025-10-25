@@ -461,16 +461,6 @@ class IDCardPhotoApp:
             self.show_info_dialog("No Photos", "No photos were captured. Please try again.")
             return
 
-        # Store user information with captured photos
-        current_user = session_manager.get_current_user()
-        if current_user:
-            # Update user's photo information in database
-            if photo_paths:
-                # Use the first photo as the main photo filename
-                photo_filename = os.path.basename(photo_paths[0])
-                session_manager.update_user_photo_info(photo_filename)
-                print(f"Updated photo info for user {current_user['npk']}: {photo_filename}")
-
         self.captured_photos = photo_paths
         self.show_selection_window()
 
@@ -518,6 +508,7 @@ class IDCardPhotoApp:
                 self.processing_window.close()
 
             self.processing_window = ProcessingWindow(self.selected_photo)
+            self.processing_window.set_session_info(session_manager.get_current_user())
             self.processing_window.processing_complete.connect(self.on_processing_complete)
             self.processing_window.back_requested.connect(self.show_selection_window)
             self.processing_window.show()
