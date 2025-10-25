@@ -8,6 +8,8 @@ import sys
 from config import APP_NAME, APP_VERSION, UI_SETTINGS
 from ui.admin_window import AdminWindow
 
+from modules.session_manager import session_manager
+
 class RoleSelectionWindow(QWidget):
     logout_successful = pyqtSignal()
     user_role_selected = pyqtSignal()
@@ -16,6 +18,7 @@ class RoleSelectionWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.admin_window = None
+        self.current_user = session_manager.get_current_user()  # ambil user aktif
         self.init_ui()
 
     def init_ui(self):
@@ -44,13 +47,15 @@ class RoleSelectionWindow(QWidget):
         self.admin_btn.setMinimumHeight(120)
         self.admin_btn.setMaximumWidth(320)
         self.admin_btn.clicked.connect(self.handle_admin_btn_click)
-
+            
 
         # Layout tengah untuk tombol User & Admin
         btn_layout = QHBoxLayout()
         btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         btn_layout.addWidget(self.user_btn)
-        btn_layout.addWidget(self.admin_btn)
+
+        if not self.current_user or self.current_user.get("role") == "admin":
+            btn_layout.addWidget(self.admin_btn)
 
         # Tombol Logout di kanan bawah
         self.logout_btn = QPushButton("Keluar")
