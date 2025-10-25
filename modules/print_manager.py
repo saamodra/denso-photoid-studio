@@ -11,11 +11,18 @@ from PyQt6.QtGui import QPainter, QPixmap
 from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtWidgets import QApplication
 from config import PRINT_SETTINGS
-
-import win32ui
-import win32print
-import win32con
-from PIL import Image, ImageWin
+try:
+    import win32ui
+    import win32print
+    import win32con
+    from PIL import ImageWin
+    WIN32_PRINT_AVAILABLE = True
+except ImportError:
+    win32ui = None
+    win32print = None
+    win32con = None
+    ImageWin = None
+    WIN32_PRINT_AVAILABLE = False
 
 
 class PrintManager:
@@ -390,6 +397,10 @@ class PrintManager:
  
     def print_to_hid_fargo(self, image_path, printer_name=None):
         """Send pre-sized image directly to HID Fargo printer using pixel coordinates."""
+        if not WIN32_PRINT_AVAILABLE:
+            print("HID Fargo printing is only available on Windows with pywin32 installed.")
+            return False
+
         print(f"Attempting to print {os.path.basename(image_path)} to HID Fargo: {printer_name}")
 
         hprinter = None

@@ -5,7 +5,7 @@ Handles background removal, ID card background application, and image processing
 import cv2
 import io
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 import os
 import mediapipe as mp # Tambahkan import untuk MediaPipe
 from config import PROCESSING_SETTINGS, BACKGROUNDS_DIR, TEMPLATES_DIR, PROCESSED_DIR, BACKGROUND_TEMPLATES, ID_CARD_TEMPLATES
@@ -18,6 +18,7 @@ class ImageProcessor:
         """Initialize the processor, loading resources."""
         self.background_templates = self.load_backgrounds()
         self.id_card_templates = self.load_id_card_templates()
+        self._font_cache = {}
         # Inisialisasi model MediaPipe Selfie Segmentation
         self.selfie_segmentation = mp.solutions.selfie_segmentation.SelfieSegmentation(model_selection=0)
 
@@ -144,7 +145,7 @@ class ImageProcessor:
             original_image = Image.open(image_path)
             return self._ensure_portrait_aspect_ratio(original_image)
 
-    def apply_id_background(self, image, background_type='blue_solid'):
+    def apply_id_background(self, image, background_type='blue_solid', user_info=None):
         """Apply ID card background to image"""
         if isinstance(image, str):
             # If image is a path, load it
@@ -164,7 +165,12 @@ class ImageProcessor:
 
         # Check if this is a template with specific positioning
         if background_type in self.id_card_templates:
-            return self._apply_template_with_positioning(subject_image, background_type, background)
+            return self._apply_template_with_positioning(
+                subject_image,
+                background_type,
+                background,
+                user_info=user_info
+            )
         else:
             # Use regular background processing
             # Resize subject to fit ID card proportions
@@ -255,7 +261,7 @@ class ImageProcessor:
         # Fallback: return original image
         return image
 
-    def _apply_template_with_positioning(self, subject_image, template_id, template_background):
+    def _apply_template_with_positioning(self, subject_image, template_id, template_background, user_info=None):
         """Apply ID card template with precise photo positioning"""
         template_config = self.id_card_templates[template_id]['config']
         photo_area = template_config['photo_area']
@@ -292,6 +298,18 @@ class ImageProcessor:
         else:
             final_image.paste(subject_resized, (photo_left_px, photo_top_px))
 
+        if user_info:
+            self._draw_user_identity(
+                final_image,
+                template_config,
+                user_info,
+                photo_left_px,
+                photo_top_px,
+                photo_width_px,
+                photo_height_px,
+                mm_to_px
+            )
+
         return final_image
 
     def _resize_to_exact_area(self, image, target_width, target_height):
@@ -313,6 +331,112 @@ class ImageProcessor:
 
         # Now resize to exact target dimensions
         return image.resize((target_width, target_height), Image.Resampling.LANCZOS)
+
+    def _draw_user_identity(self, final_image, template_config, user_info,
+                             photo_left_px, photo_top_px, photo_width_px, photo_height_px, mm_to_px):
+        """Draw user name and NPK text onto the template below the photo area."""
+        name = (user_info.get('name') or "").strip()
+        npk = (user_info.get('npk') or "").strip()
+        if not name and not npk:
+            return
+
+        draw = ImageDraw.Draw(final_image)
+        template_width, template_height = final_image.size
+
+        # Base positioning: centered below the photo area with configurable margins
+        center_x = photo_left_px + (photo_width_px // 2)
+        margin_mm = template_config.get('identity_margin_mm', 4.0)
+        line_gap_mm = template_config.get('identity_line_gap_mm', 1.5)
+        margin_px = int(margin_mm * mm_to_px)
+        line_gap_px = max(int(line_gap_mm * mm_to_px), 4)
+
+        dpi = max(int(round(mm_to_px * 25.4)), 72)
+        font_size_px = max(int(round(7 * dpi / 72.0)), 10)
+
+        current_y = photo_top_px + photo_height_px + margin_px
+        max_bottom = template_height - int(4 * mm_to_px)
+        current_y = min(current_y, max_bottom)
+
+        if name:
+            name_font = self._get_font(font_size_px, bold=True, family="Verdana")
+            name_height = self._draw_centered_text(
+                draw, name, center_x, current_y, name_font, fill=(0, 0, 0)
+            )
+            current_y = min(current_y + name_height + line_gap_px, max_bottom)
+
+        if npk:
+            npk_font = self._get_font(font_size_px, bold=True, family="Verdana")
+            self._draw_centered_text(
+                draw, npk, center_x, current_y, npk_font, fill=(0, 0, 0)
+            )
+
+    def _get_font(self, size, bold=False, family=None):
+        """Load and cache fonts with fallback options."""
+        cache_key = (family or 'default', size, bold)
+        if cache_key in self._font_cache:
+            return self._font_cache[cache_key]
+
+        font_candidates = []
+
+        if family and family.lower() == "verdana":
+            if bold:
+                font_candidates.extend([
+                    "Verdana Bold.ttf",
+                    "verdana bold.ttf",
+                    "Verdana-Bold.ttf",
+                    "VERDANAB.TTF",
+                    "verdanab.ttf",
+                    "/Library/Fonts/Verdana Bold.ttf",
+                    "/System/Library/Fonts/Verdana Bold.ttf",
+                    "C:\\Windows\\Fonts\\verdanab.ttf",
+                ])
+            else:
+                font_candidates.extend([
+                    "Verdana.ttf",
+                    "verdana.ttf",
+                    "/Library/Fonts/Verdana.ttf",
+                    "/System/Library/Fonts/Verdana.ttf",
+                    "C:\\Windows\\Fonts\\verdana.ttf",
+                ])
+
+        fallback_fonts = [
+            "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf",
+            "Arial Bold.ttf" if bold else "Arial.ttf",
+            "Arialbd.ttf" if bold else "Arial.ttf",
+            "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
+            "/Library/Fonts/Arial Bold.ttf" if bold else "/Library/Fonts/Arial.ttf",
+            "Helvetica Bold.ttf" if bold else "Helvetica.ttf",
+        ]
+        font_candidates.extend(fallback_fonts)
+
+        font = None
+        for path in font_candidates:
+            if not path:
+                continue
+            try:
+                font = ImageFont.truetype(path, size)
+                break
+            except (OSError, IOError):
+                continue
+
+        if font is None:
+            font = ImageFont.load_default()
+
+        self._font_cache[cache_key] = font
+        return font
+
+    def _draw_centered_text(self, draw, text, center_x, top_y, font, fill):
+        """Draw text centered horizontally around center_x and return its height."""
+        if not text:
+            return 0
+
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        x = int(center_x - (text_width / 2))
+        y = int(top_y)
+        draw.text((x, y), text, fill=fill, font=font)
+        return text_height
 
     def _resize_for_id_card(self, image):
         """Resize image to fit ID card proportions"""
