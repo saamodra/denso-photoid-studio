@@ -198,6 +198,7 @@ class IDCardPhotoApp:
         if session_manager.login(user_data):
             self.current_user = user_data  # Keep for backward compatibility
             self.current_window.hide()
+
             self.show_role_selection_window()
         else:
             self.show_error_dialog("Session Error", "Failed to start user session")
@@ -559,33 +560,31 @@ class IDCardPhotoApp:
         if success:
             dialog = CustomStyledDialog(
                 self.current_window,
-                "Print Complete",
-                "ID card printed successfully!\n\nWould you like to create another ID card?",
-                [("No", QDialog.DialogCode.Rejected), ("Yes", QDialog.DialogCode.Accepted)]
+                "Pencetakan selesai",
+                "ID Card berhasil dicetak!!\n\nMohon bersabar, silahkan ditunggu",
+                [("OK", QDialog.DialogCode.Accepted)]
             )
-            dialog.set_cancel_button(0)  # "No" button as cancel
-
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                self.restart_workflow()
-            else:
-                self.app.quit()
         else:
             dialog = CustomStyledDialog(
                 self.current_window,
-                "Print Failed",
-                "Printing failed. Would you like to try again or start over?",
-                [("Cancel", QDialog.DialogCode.Rejected), ("Try Again", QDialog.DialogCode.Accepted), ("Start Over", 2)]
+                "Pencetakan gagal",
+                "ID Card gagal dicetak.\n\nMohon hubungi administrator segera!!!",
+                [("OK", QDialog.DialogCode.Accepted)]
+                # [("Cancel", QDialog.DialogCode.Rejected), ("Try Again", QDialog.DialogCode.Accepted), ("Start Over", 2)]
             )
-            dialog.set_cancel_button(0)  # "Cancel" button as cancel
 
-            result = dialog.exec()
-            if result == QDialog.DialogCode.Accepted:
-                # Stay on print window
-                pass
-            elif result == 2:  # Start Over
-                self.restart_workflow()
-            else:
-                self.app.quit()
+            # dialog.set_cancel_button(0)  # "Cancel" button as cancel
+
+            # result = dialog.exec()
+            # if result == QDialog.DialogCode.Accepted:
+            #     # Stay on print window
+            #     pass
+            # elif result == 2:  # Start Over
+            # else:
+            #     self.app.quit()
+
+        dialog.exec()
+        self.logout()
 
     def restart_workflow(self):
         """Restart the entire workflow"""
@@ -606,7 +605,7 @@ class IDCardPhotoApp:
             self.processed_image = None
 
             # Show role selection window
-            QTimer.singleShot(100, self.show_role_selection_window)  # Small delay for cleanup
+            QTimer.singleShot(100, self.show_login_window)  # Small delay for cleanup
 
         except Exception as e:
             self.show_error_dialog("Restart Error", f"Failed to restart workflow:\n{str(e)}")
