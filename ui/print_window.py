@@ -650,6 +650,7 @@ class PrintWindow(QMainWindow):
 
         if success:
             self.status_label.setText("Pekerjaan cetak berhasil diselesaikan!")
+            self.save_id_card()
         else:
             self.status_label.setText("Pekerjaan cetak gagal")
 
@@ -778,10 +779,6 @@ class PrintWindow(QMainWindow):
             user_npk = current_user['npk']
             current_time = datetime.now()
 
-            # Generate unique filenames
-            photo_filename = self.generate_unique_filename(user_npk, "photo")
-            card_filename = self.generate_unique_filename(user_npk, "card")
-
             # Create subdirectories within the configured path
             original_dir = os.path.join(image_save_path, "original")
             card_dir = os.path.join(image_save_path, "card")
@@ -789,6 +786,30 @@ class PrintWindow(QMainWindow):
             # Create directories if they don't exist
             os.makedirs(original_dir, exist_ok=True)
             os.makedirs(card_dir, exist_ok=True)
+
+            # Remove previous files if they exist
+            previous_photo = current_user.get('photo_filename')
+            previous_card = current_user.get('card_filename')
+
+            if previous_photo:
+                old_photo_path = os.path.join(original_dir, previous_photo)
+                if os.path.exists(old_photo_path):
+                    try:
+                        os.remove(old_photo_path)
+                    except Exception as remove_err:
+                        print(f"Peringatan: gagal menghapus foto sebelumnya {old_photo_path}: {remove_err}")
+
+            if previous_card:
+                old_card_path = os.path.join(card_dir, previous_card)
+                if os.path.exists(old_card_path):
+                    try:
+                        os.remove(old_card_path)
+                    except Exception as remove_err:
+                        print(f"Peringatan: gagal menghapus kartu sebelumnya {old_card_path}: {remove_err}")
+
+            # Generate unique filenames
+            photo_filename = self.generate_unique_filename(user_npk, "photo")
+            card_filename = self.generate_unique_filename(user_npk, "card")
 
             # Define file paths
             original_photo_path = os.path.join(original_dir, photo_filename)
