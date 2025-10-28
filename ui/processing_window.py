@@ -5,7 +5,7 @@ Interface for background removal and editing
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                             QLabel, QPushButton, QGridLayout, QFrame,
                             QScrollArea, QSlider, QGroupBox, QProgressBar,
-                            QButtonGroup, QRadioButton)
+                            QButtonGroup, QRadioButton, QFileDialog, QMessageBox)
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
 from PyQt6.QtGui import QPixmap, QFont
 from PIL import Image
@@ -14,6 +14,7 @@ import tempfile
 from modules.image_processor import ImageProcessor
 from modules.session_manager import session_manager
 from config import UI_SETTINGS
+from datetime import datetime
 
 
 class ProcessingThread(QThread):
@@ -157,15 +158,17 @@ class ProcessingWindow(QMainWindow):
     processing_complete = pyqtSignal(object)  # Emits processed PIL Image
     back_requested = pyqtSignal()
 
-    def __init__(self, photo_path):
+    def __init__(self, photo_path, debug_save=False):
         super().__init__()
         self.photo_path = photo_path
+        self.debug_save_enabled = debug_save
         self.processor = ImageProcessor()
         self.processing_thread = None
         self.processed_image = None
         self.current_user = session_manager.get_current_user()
         self.current_background = 'denso_id_card'  # Default to denso template
         self.background_options = []
+        self.save_button = None
         self.init_ui()
         self.load_original_image()
         self.create_background_options()
@@ -372,6 +375,12 @@ class ProcessingWindow(QMainWindow):
         self.reset_button.setMinimumHeight(50)
         self.reset_button.clicked.connect(self.reset_processing)
 
+        if self.debug_save_enabled:
+            self.save_button = QPushButton("💾 Simpan Hasil")
+            self.save_button.setMinimumHeight(50)
+            self.save_button.setEnabled(False)
+            self.save_button.clicked.connect(self.save_processed_image)
+
         # Next button
         self.next_button = QPushButton("Selanjutnya: Pratinjau Cetak →")
         self.next_button.setMinimumHeight(50)
@@ -380,6 +389,8 @@ class ProcessingWindow(QMainWindow):
 
         layout.addWidget(self.back_button)
         layout.addWidget(self.reset_button)
+        if self.save_button:
+            layout.addWidget(self.save_button)
         layout.addStretch()
         layout.addWidget(self.next_button)
 
@@ -484,6 +495,8 @@ class ProcessingWindow(QMainWindow):
         self.progress_bar.setValue(0)
         self.progress_label.setText("Memproses foto...")
         self.process_button.setEnabled(False)
+        if self.save_button:
+            self.save_button.setEnabled(False)
 
         # Start processing thread
         self.processing_thread = ProcessingThread(
@@ -513,6 +526,8 @@ class ProcessingWindow(QMainWindow):
         self.progress_label.setText("Pemrosesan selesai!")
         self.process_button.setEnabled(True)
         self.next_button.setEnabled(True)
+        if self.save_button:
+            self.save_button.setEnabled(True)
 
         # Store processed image
         self.processed_image = processed_image
@@ -523,6 +538,8 @@ class ProcessingWindow(QMainWindow):
         self.progress_label.setText(f"Error: {error_message}")
         self.process_button.setEnabled(True)
         self.processed_label.setText(f"Kesalahan Pemrosesan:\n{error_message}")
+        if self.save_button:
+            self.save_button.setEnabled(False)
 
     def display_processed_image(self, image):
         """Display processed image"""
@@ -554,12 +571,46 @@ class ProcessingWindow(QMainWindow):
             print(f"Error displaying processed image: {e}")
             self.processed_label.setText("Kesalahan menampilkan\nfoto yang diproses")
 
+    def save_processed_image(self):
+        """Save processed image to a user-selected file."""
+        if not self.processed_image:
+            QMessageBox.information(self, "Belum Ada Hasil", "Silakan proses foto terlebih dahulu sebelum menyimpan.")
+            return
+
+        default_name = f"id_card_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        default_path = os.path.join(os.path.expanduser("~"), "Desktop", default_name)
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Simpan Foto ID",
+            default_path,
+            "PNG Files (*.png);;JPEG Files (*.jpg *.jpeg)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            # Determine format from selected filter / extension
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext in [".jpg", ".jpeg"]:
+                self.processed_image.convert("RGB").save(file_path, "JPEG", quality=95)
+            else:
+                if not ext:
+                    file_path = file_path + ".png"
+                self.processed_image.save(file_path, "PNG")
+
+            QMessageBox.information(self, "Berhasil", f"Foto ID berhasil disimpan di:\n{file_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Gagal Menyimpan", f"Tidak dapat menyimpan gambar:\n{e}")
+
     def reset_processing(self):
         """Reset to original image"""
         self.processed_image = None
         self.next_button.setEnabled(False)
         self.progress_label.setText("Siap untuk diproses")
         self.processed_label.setText("Klik 'Proses Foto'\nuntuk melihat hasil")
+        if self.save_button:
+            self.save_button.setEnabled(False)
 
     def on_back_clicked(self):
         """Handle back button click"""
