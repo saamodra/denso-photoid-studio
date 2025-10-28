@@ -72,10 +72,10 @@ ID_CARD_TEMPLATES = {
     'denso_id_card': {
         'file': 'id_card.png',
         'photo_area': {
-            'width_mm': 30.0,
-            'height_mm': 37.0,
+            'width_mm': 33.0,
+            'height_mm': 40.0,
             'x_offset_mm': 18.3,  # Center position from left edge
-            'y_offset_mm': 16.0,  # Distance from top edge
+            'y_offset_mm': 22.0,  # Distance from top edge
         },
         'name': 'DENSO ID Card Template'
     }

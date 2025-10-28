@@ -105,30 +105,30 @@ class ImageProcessor:
         try:
             # Load image and convert to RGB
             image = Image.open(image_path).convert('RGB')
-            
+
             # Convert PIL Image to NumPy array for MediaPipe processing
             image_np = np.array(image)
-            
+
             # Process the image to get the segmentation mask
             results = self.selfie_segmentation.process(image_np)
-            
+
             # Create a condition where the mask is > 0.1 (you can adjust this threshold)
             # This creates a boolean mask of the foreground
             condition = np.stack((results.segmentation_mask,) * 3, axis=-1) > 0.1
-            
+
             # Create a transparent background image
             transparent_bg = np.zeros_like(image_np, dtype=np.uint8)
-            
+
             # Apply the condition: where condition is true, use original image, else use transparent
             output_np = np.where(condition, image_np, transparent_bg)
-            
+
             # Convert back to PIL Image
             no_bg_image = Image.fromarray(output_np)
-            
+
             # Add an alpha channel based on the segmentation mask for transparency
             mask = (results.segmentation_mask * 255).astype('uint8')
             mask_pil = Image.fromarray(mask, mode='L')
-            
+
             # Create the final RGBA image
             final_image = Image.new('RGBA', no_bg_image.size)
             final_image.paste(no_bg_image, (0,0))
@@ -345,19 +345,20 @@ class ImageProcessor:
 
         # Base positioning: centered below the photo area with configurable margins
         center_x = photo_left_px + (photo_width_px // 2)
-        margin_mm = template_config.get('identity_margin_mm', 4.0)
-        line_gap_mm = template_config.get('identity_line_gap_mm', 1.5)
+        margin_mm = template_config.get('identity_margin_mm', 2.7)
+        line_gap_mm = template_config.get('identity_line_gap_mm', 1.3)
         margin_px = int(margin_mm * mm_to_px)
         line_gap_px = max(int(line_gap_mm * mm_to_px), 4)
 
         dpi = max(int(round(mm_to_px * 25.4)), 72)
-        font_size_px = max(int(round(7 * dpi / 72.0)), 10)
+        font_size_px = max(int(round(6.5 * dpi / 72.0)), 10)
 
         current_y = photo_top_px + photo_height_px + margin_px
         max_bottom = template_height - int(4 * mm_to_px)
         current_y = min(current_y, max_bottom)
 
         if name:
+            name = name.upper()
             name_font = self._get_font(font_size_px, bold=True, family="Verdana")
             name_height = self._draw_centered_text(
                 draw, name, center_x, current_y, name_font, fill=(0, 0, 0)
@@ -365,6 +366,7 @@ class ImageProcessor:
             current_y = min(current_y + name_height + line_gap_px, max_bottom)
 
         if npk:
+            npk = npk.upper()
             npk_font = self._get_font(font_size_px, bold=True, family="Verdana")
             self._draw_centered_text(
                 draw, npk, center_x, current_y, npk_font, fill=(0, 0, 0)
@@ -378,26 +380,60 @@ class ImageProcessor:
 
         font_candidates = []
 
-        if family and family.lower() == "verdana":
-            if bold:
-                font_candidates.extend([
-                    "Verdana Bold.ttf",
-                    "verdana bold.ttf",
-                    "Verdana-Bold.ttf",
-                    "VERDANAB.TTF",
-                    "verdanab.ttf",
-                    "/Library/Fonts/Verdana Bold.ttf",
-                    "/System/Library/Fonts/Verdana Bold.ttf",
-                    "C:\\Windows\\Fonts\\verdanab.ttf",
-                ])
-            else:
-                font_candidates.extend([
-                    "Verdana.ttf",
-                    "verdana.ttf",
-                    "/Library/Fonts/Verdana.ttf",
-                    "/System/Library/Fonts/Verdana.ttf",
-                    "C:\\Windows\\Fonts\\verdana.ttf",
-                ])
+        if family:
+            family_lower = family.lower()
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            font_dir = os.path.join(project_root, "assets", "fonts")
+
+            if family_lower == "verdana":
+                if bold:
+                    font_candidates.extend([
+                        os.path.join(font_dir, "Verdana-Bold.ttf"),
+                        os.path.join(font_dir, "Verdana Bold.ttf"),
+                        os.path.join(font_dir, "verdanab.ttf"),
+                        "Verdana Bold.ttf",
+                        "verdana bold.ttf",
+                        "Verdana-Bold.ttf",
+                        "VERDANAB.TTF",
+                        "verdanab.ttf",
+                        "/Library/Fonts/Verdana Bold.ttf",
+                        "/System/Library/Fonts/Verdana Bold.ttf",
+                        "C:\\Windows\\Fonts\\verdanab.ttf",
+                    ])
+                else:
+                    font_candidates.extend([
+                        os.path.join(font_dir, "Verdana.ttf"),
+                        os.path.join(font_dir, "verdana.ttf"),
+                        "Verdana.ttf",
+                        "verdana.ttf",
+                        "/Library/Fonts/Verdana.ttf",
+                        "/System/Library/Fonts/Verdana.ttf",
+                        "C:\\Windows\\Fonts\\verdana.ttf",
+                    ])
+            elif family_lower == "calibri":
+                if bold:
+                    font_candidates.extend([
+                        os.path.join(font_dir, "Calibri-Bold.ttf"),
+                        os.path.join(font_dir, "Calibri Bold.ttf"),
+                        os.path.join(font_dir, "calibrib.ttf"),
+                        "Calibri Bold.ttf",
+                        "calibri bold.ttf",
+                        "Calibri-Bold.ttf",
+                        "calibrib.ttf",
+                        "/Library/Fonts/Calibri Bold.ttf",
+                        "/System/Library/Fonts/Calibri Bold.ttf",
+                        "C:\\Windows\\Fonts\\calibrib.ttf",
+                    ])
+                else:
+                    font_candidates.extend([
+                        os.path.join(font_dir, "Calibri.ttf"),
+                        os.path.join(font_dir, "calibri.ttf"),
+                        "Calibri.ttf",
+                        "calibri.ttf",
+                        "/Library/Fonts/Calibri.ttf",
+                        "/System/Library/Fonts/Calibri.ttf",
+                        "C:\\Windows\\Fonts\\calibri.ttf",
+                    ])
 
         fallback_fonts = [
             "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf",
@@ -422,6 +458,7 @@ class ImageProcessor:
         if font is None:
             font = ImageFont.load_default()
 
+        print(f"Using font: {font.path if hasattr(font, 'path') else 'default font'} for size {size}, bold={bold}")
         self._font_cache[cache_key] = font
         return font
 
@@ -443,7 +480,7 @@ class ImageProcessor:
         # Standard ID card has person's head/shoulders
         # Typically 70-80% of card height for the person
         # Using portrait background (600x800)
-        target_height = int(800 * 0.75)  # 75% of background height
+        target_height = int(800 * 0.8)  # Slightly taller subject framing
 
         # Calculate new width maintaining aspect ratio
         original_width, original_height = image.size
@@ -471,6 +508,7 @@ class ImageProcessor:
 
         # Create a copy of background
         result = background.copy()
+        print(f"Compositing subject of size {subject.size} onto background of size {background.size} at offset ({x_offset}, {y_offset})")
 
         # Paste subject onto background
         if subject.mode == 'RGBA':

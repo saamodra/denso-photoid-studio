@@ -53,11 +53,10 @@ class LoginPage(QWidget):
         container_layout.addWidget(subtitle)
         container_layout.addSpacing(20) # Beri jarak
 
-        # Input ID Pengguna
-        id_label = QLabel("ID Pengguna:")
+        id_label = QLabel("NPK:")
         self.id_entry = QLineEdit(self)
-        self.id_entry.setPlaceholderText("Masukkan ID Anda")
-        self.id_entry.setText("ADMIN001")
+        self.id_entry.setPlaceholderText("Masukkan NPK Anda")
+        self.id_entry.setText("2221136")
         self.id_entry.setMinimumHeight(40)
         container_layout.addWidget(id_label)
         container_layout.addWidget(self.id_entry)

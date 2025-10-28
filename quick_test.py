@@ -5,25 +5,119 @@ Usage: python quick_test.py [window_name]
 """
 import sys
 import os
+import argparse
+from pathlib import Path
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QTimer
 
 # Add the project directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-def test_processing():
+from modules.session_manager import session_manager
+
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Quick UI tester untuk jendela tertentu."
+    )
+    parser.add_argument(
+        "window",
+        choices=["processing", "print", "selection", "main", "admin"],
+        help="Jenis jendela yang ingin diuji.",
+    )
+    parser.add_argument(
+        "--name",
+        default="Muhammad Widodo",
+        help="Nama pengguna contoh untuk pengujian ProcessingWindow.",
+    )
+    parser.add_argument(
+        "--npk",
+        default="2050501",
+        help="NPK pengguna contoh untuk pengujian ProcessingWindow.",
+    )
+    parser.add_argument(
+        "--role",
+        default="operator",
+        help="Peran pengguna contoh untuk pengujian ProcessingWindow.",
+    )
+    parser.add_argument(
+        "--department",
+        default="Produksi",
+        help="Departemen pengguna contoh untuk pengujian ProcessingWindow.",
+    )
+    parser.add_argument(
+        "--photo",
+        help="Path foto lokal untuk pengujian ProcessingWindow.",
+    )
+    parser.add_argument(
+        "--no-auto-process",
+        action="store_false",
+        dest="auto_process",
+        help="Nonaktifkan pemrosesan otomatis saat ProcessingWindow dibuka.",
+    )
+    parser.set_defaults(auto_process=True)
+    return parser.parse_args()
+
+
+def set_test_session(args):
+    """Set user session data for testing."""
+    test_user = {
+        "name": args.name,
+        "npk": args.npk,
+        "role": args.role,
+        "department_name": args.department,
+    }
+    session_manager.current_user = test_user
+    session_manager.is_logged_in = True
+    session_manager.session_id = "quick_test_session"
+
+
+DEFAULT_TEST_PHOTO = Path(__file__).parent / "assets" / "sample_photos" / "IMG_0014.JPG"
+
+
+def resolve_test_photo(args):
+    """Determine which photo path to use for the ProcessingWindow quick test."""
+
+    if args.photo:
+        photo_path = Path(args.photo).expanduser()
+        if not photo_path.is_file():
+            print(f"Foto tidak ditemukan: {photo_path}")
+            sys.exit(1)
+        return str(photo_path.resolve())
+
+    if DEFAULT_TEST_PHOTO.is_file():
+        return str(DEFAULT_TEST_PHOTO.resolve())
+
+    print(f"Peringatan: foto default tidak ditemukan di {DEFAULT_TEST_PHOTO}")
+
+    return None
+
+
+def test_processing(args):
     """Quick test of processing window"""
     from ui.processing_window import ProcessingWindow
-    from PIL import Image
-    import tempfile
+    photo_path = resolve_test_photo(args)
 
-    # Create test image
-    test_image = Image.new('RGB', (400, 600), color='lightblue')
-    temp_file = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
-    test_image.save(temp_file.name, 'JPEG')
+    if not photo_path:
+        from PIL import Image
+        import tempfile
+
+        # Create fallback test image when no local photo provided
+        test_image = Image.new("RGB", (400, 600), color="lightblue")
+        temp_file = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+        test_image.save(temp_file.name, "JPEG")
+        photo_path = temp_file.name
 
     app = QApplication(sys.argv)
-    window = ProcessingWindow(temp_file.name)
+    set_test_session(args)
+    window = ProcessingWindow(photo_path, debug_save=True)
+    window.set_session_info(session_manager.get_current_user())
+
+    if args.auto_process:
+        # Mulai pemrosesan otomatis setelah event loop berjalan
+        QTimer.singleShot(200, window.process_photo)
+
     window.show()
     return app.exec()
 
@@ -78,22 +172,15 @@ def test_admin():
     return app.exec()
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python quick_test.py [processing|print|selection|main|admin]")
-        sys.exit(1)
+    args = parse_args()
 
-    window_type = sys.argv[1].lower()
-
-    if window_type == 'processing':
-        test_processing()
-    elif window_type == 'print':
+    if args.window == "processing":
+        test_processing(args)
+    elif args.window == "print":
         test_print()
-    elif window_type == 'selection':
+    elif args.window == "selection":
         test_selection()
-    elif window_type == 'main':
+    elif args.window == "main":
         test_main()
-    elif window_type == 'admin':
+    elif args.window == "admin":
         test_admin()
-    else:
-        print(f"Unknown window: {window_type}")
-        print("Available: processing, print, selection, main, admin")
