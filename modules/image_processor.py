@@ -358,6 +358,7 @@ class ImageProcessor:
         current_y = min(current_y, max_bottom)
 
         if name:
+            name = self._format_identity_name(name, max_length=15)
             name = name.upper()
             name_font = self._get_font(font_size_px, bold=True, family="Verdana")
             name_height = self._draw_centered_text(
@@ -377,7 +378,6 @@ class ImageProcessor:
         cache_key = (family or 'default', size, bold)
         if cache_key in self._font_cache:
             return self._font_cache[cache_key]
-
         font_candidates = []
 
         if family:
@@ -461,6 +461,44 @@ class ImageProcessor:
         print(f"Using font: {font.path if hasattr(font, 'path') else 'default font'} for size {size}, bold={bold}")
         self._font_cache[cache_key] = font
         return font
+
+    def _format_identity_name(self, name, max_length=15):
+        parts = name.strip().split()
+
+        if len(name) <= max_length:
+            return name
+
+        if len(parts) == 1:
+            return parts[0][:max_length]
+
+        # Normalize and check for Muhammad variants
+        muhammad_variants = {"muhammad", "muhamad", "mohamad", "mohammad", "mochammad", "mochamad"}
+        first_name = parts[0].lower()
+
+        formatted_parts = []
+
+        if first_name in muhammad_variants:
+            formatted_parts.append("M.")
+            if len(parts) > 1:
+                formatted_parts.append(parts[1])
+                remaining = parts[2:]
+            else:
+                remaining = []
+        else:
+            formatted_parts.append(parts[0])
+            remaining = parts[1:]
+
+        # Add initials for the remaining parts
+        for part in remaining:
+            if part:
+                formatted_parts.append(part[0] + ".")
+
+        result = " ".join(formatted_parts)
+
+        if len(result) > max_length:
+            result = result[:max_length].rstrip()
+
+        return result
 
     def _draw_centered_text(self, draw, text, center_x, top_y, font, fill):
         """Draw text centered horizontally around center_x and return its height."""
