@@ -345,7 +345,7 @@ class ImageProcessor:
 
         # Base positioning: centered below the photo area with configurable margins
         center_x = photo_left_px + (photo_width_px // 2)
-        margin_mm = template_config.get('identity_margin_mm', 2.7)
+        margin_mm = template_config.get('identity_margin_mm', 1.4)
         line_gap_mm = template_config.get('identity_line_gap_mm', 1.3)
         margin_px = int(margin_mm * mm_to_px)
         line_gap_px = max(int(line_gap_mm * mm_to_px), 4)
