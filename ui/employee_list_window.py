@@ -465,7 +465,8 @@ class EmployeeListPage(QWidget):
             sheet.append(headers)
             
             for employee in self.all_employees:
-                row = [employee.get(h, "") for h in headers]
+                # row = [employee.get(h, "") for h in headers]
+                row = [("" if h == "password" else employee.get(h, "")) for h in headers] # hide passsword
                 sheet.append(row)
             
             workbook.save(file_path)
@@ -504,7 +505,12 @@ class EmployeeListPage(QWidget):
                 # TODO: Lakukan validasi data sebelum memasukkan ke database
                 # TODO: Masukkan data baru ini ke database Anda
                 for user in new_employees:
-                    db_manager.create_user(user)
+
+                    # Extract password before creating user
+                    password = user.pop('password')
+
+                    # Create user with encrypted password
+                    success = db_manager.create_user_with_password(user, password)
 
                 self.all_employees.extend(new_employees)
                 self.perform_search() # Untuk me-refresh tampilan
