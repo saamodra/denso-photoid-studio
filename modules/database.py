@@ -397,17 +397,16 @@ class DatabaseManager:
                 logger.warning(f"User {npk} has no password set")
                 return None
 
-            return user
-            # fungsi password nya ga running, jadi pengecekan ane tutup dulu
-            # # Verify password
-            # if auth_manager.verify_password(password, user['password']):
-            #     # Update last access time
-            #     self.update_user(npk, {'last_access': datetime.now()})
-            #     logger.info(f"User {npk} authenticated successfully")
-            #     return user
-            # else:
-            #     logger.warning(f"Authentication failed for user: {npk}")
-            #     return None
+            
+            # Verify password
+            if auth_manager.verify_password(password, user['password']):
+                # Update last access time
+                self.update_user(npk, {'last_access': datetime.now()})
+                logger.info(f"User {npk} authenticated successfully")
+                return user
+            else:
+                logger.warning(f"Authentication failed for user: {npk}")
+                return None
 
         except Exception as e:
             logger.error(f"Authentication error for user {npk}: {e}")
