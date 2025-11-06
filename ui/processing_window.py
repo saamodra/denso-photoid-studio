@@ -11,7 +11,7 @@ from PyQt6.QtGui import QPixmap, QFont
 from PIL import Image
 import os
 import tempfile
-from modules.image_processor import ImageProcessor
+from modules.image_processor import get_shared_processor
 from modules.session_manager import session_manager
 from config import UI_SETTINGS
 from datetime import datetime
@@ -164,7 +164,7 @@ class ProcessingWindow(QMainWindow):
         super().__init__()
         self.photo_path = photo_path
         self.debug_save_enabled = debug_save
-        self.processor = ImageProcessor()
+        self.processor = get_shared_processor()
         self.processing_thread = None
         self.processed_image = None
         self.current_user = session_manager.get_current_user()

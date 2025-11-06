@@ -12,6 +12,45 @@ from rembg import remove, new_session
 from config import PROCESSING_SETTINGS, BACKGROUNDS_DIR, TEMPLATES_DIR, PROCESSED_DIR, BACKGROUND_TEMPLATES, ID_CARD_TEMPLATES
 
 
+# Global rembg session and shared processor to avoid repeated heavy loads
+GLOBAL_REMBG_SESSION = None
+_SHARED_PROCESSOR = None
+
+
+def _assets_dir():
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, 'assets')
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(project_root, 'assets')
+
+
+def preload_rembg_session():
+    """Load rembg ONNX model into a global session (CPU provider)."""
+    global GLOBAL_REMBG_SESSION
+    if GLOBAL_REMBG_SESSION is not None:
+        return True
+    try:
+        assets_dir = _assets_dir()
+        model_path = os.path.join(assets_dir, 'models', 'u2net.onnx')
+        if os.path.exists(model_path):
+            GLOBAL_REMBG_SESSION = new_session(model=model_path, providers=['CPUExecutionProvider'])
+        else:
+            GLOBAL_REMBG_SESSION = new_session(providers=['CPUExecutionProvider'])
+        return True
+    except Exception as e:
+        print(f"Failed to preload rembg session: {e}")
+        GLOBAL_REMBG_SESSION = None
+        return False
+
+
+def get_shared_processor():
+    """Return a shared ImageProcessor instance (reuses global rembg session)."""
+    global _SHARED_PROCESSOR
+    if _SHARED_PROCESSOR is None:
+        _SHARED_PROCESSOR = ImageProcessor()
+    return _SHARED_PROCESSOR
+
+
 class ImageProcessor:
     """Main image processing class"""
 
@@ -20,22 +59,10 @@ class ImageProcessor:
         self.background_templates = self.load_backgrounds()
         self.id_card_templates = self.load_id_card_templates()
         self._font_cache = {}
-        # Inisialisasi sesi rembg agar re-use model (lebih cepat & stabil untuk packaging)
+        # Inisialisasi sesi rembg; gunakan global jika sudah tersedia (tanpa memblokir)
         try:
-            # Cari model ONNX yang sudah dipaketkan bersama aplikasi
-            if hasattr(sys, '_MEIPASS'):
-                assets_dir = os.path.join(sys._MEIPASS, 'assets')
-            else:
-                project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                assets_dir = os.path.join(project_root, 'assets')
-
-            packaged_model = os.path.join(assets_dir, 'models', 'u2net.onnx')
-
-            if os.path.exists(packaged_model):
-                self._rembg_session = new_session(model=packaged_model)
-            else:
-                # Fallback ke model default rembg (akan gunakan cache jika tersedia)
-                self._rembg_session = new_session()
+            global GLOBAL_REMBG_SESSION
+            self._rembg_session = GLOBAL_REMBG_SESSION
         except Exception:
             self._rembg_session = None
 
@@ -122,6 +149,11 @@ class ImageProcessor:
         try:
             # Load image and ensure RGBA for alpha handling
             image = Image.open(image_path).convert('RGBA')
+
+            # Pastikan sesi rembg tersedia; jika belum, preload sekarang (sekali)
+            if self._rembg_session is None:
+                preload_rembg_session()
+                self._rembg_session = GLOBAL_REMBG_SESSION
 
             # Run rembg background removal. It may return bytes or PIL Image.
             result = remove(image, session=self._rembg_session) if self._rembg_session else remove(image)
