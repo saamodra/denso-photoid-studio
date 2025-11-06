@@ -116,24 +116,26 @@ class BackgroundOption(QWidget):
             if background:
                 background.thumbnail((192, 256), Image.Resampling.LANCZOS)
 
-                # Save temporary preview
-                with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
-                    background.save(temp_file.name, "JPEG", quality=85)
+                # Save temporary preview (Windows-safe)
+                tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
+                temp_path = tmp.name
+                tmp.close()
+                background.save(temp_path, "JPEG", quality=85)
 
-                    pixmap = QPixmap(temp_file.name)
-                    # Scale while maintaining aspect ratio
-                    scaled_pixmap = pixmap.scaled(
-                        192, 256, Qt.AspectRatioMode.KeepAspectRatio,
-                        Qt.TransformationMode.SmoothTransformation
-                    )
-                    self.preview_label.setPixmap(scaled_pixmap)
-                    self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                pixmap = QPixmap(temp_path)
+                # Scale while maintaining aspect ratio
+                scaled_pixmap = pixmap.scaled(
+                    192, 256, Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+                self.preview_label.setPixmap(scaled_pixmap)
+                self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-                    # Clean up
-                    try:
-                        os.remove(temp_file.name)
-                    except:
-                        pass
+                # Clean up
+                try:
+                    os.remove(temp_path)
+                except Exception:
+                    pass
             else:
                 self.preview_label.setText("Preview\nN/A")
 
@@ -402,24 +404,26 @@ class ProcessingWindow(QMainWindow):
             image = Image.open(self.photo_path)
             image.thumbnail((340, 440), Image.Resampling.LANCZOS)
 
-            # Save temporary preview
-            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
-                image.save(temp_file.name, "JPEG", quality=90)
+            # Save temporary preview (Windows-safe)
+            tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
+            temp_path = tmp.name
+            tmp.close()
+            image.save(temp_path, "JPEG", quality=90)
 
-                pixmap = QPixmap(temp_file.name)
-                # Scale while maintaining aspect ratio
-                scaled_pixmap = pixmap.scaled(
-                    340, 440, Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
-                )
-                self.original_label.setPixmap(scaled_pixmap)
-                self.original_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            pixmap = QPixmap(temp_path)
+            # Scale while maintaining aspect ratio
+            scaled_pixmap = pixmap.scaled(
+                340, 440, Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            )
+            self.original_label.setPixmap(scaled_pixmap)
+            self.original_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-                # Clean up
-                try:
-                    os.remove(temp_file.name)
-                except:
-                    pass
+            # Clean up
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
 
         except Exception as e:
             print(f"Error loading original image: {e}")
@@ -548,24 +552,26 @@ class ProcessingWindow(QMainWindow):
             display_image = image.copy()
             display_image.thumbnail((340, 440), Image.Resampling.LANCZOS)
 
-            # Save temporary preview
-            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
-                display_image.save(temp_file.name, "JPEG", quality=90)
+            # Save temporary preview (Windows-safe)
+            tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
+            temp_path = tmp.name
+            tmp.close()
+            display_image.save(temp_path, "JPEG", quality=90)
 
-                pixmap = QPixmap(temp_file.name)
-                # Scale while maintaining aspect ratio
-                scaled_pixmap = pixmap.scaled(
-                    340, 440, Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
-                )
-                self.processed_label.setPixmap(scaled_pixmap)
-                self.processed_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            pixmap = QPixmap(temp_path)
+            # Scale while maintaining aspect ratio
+            scaled_pixmap = pixmap.scaled(
+                340, 440, Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            )
+            self.processed_label.setPixmap(scaled_pixmap)
+            self.processed_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-                # Clean up
-                try:
-                    os.remove(temp_file.name)
-                except:
-                    pass
+            # Clean up
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
 
         except Exception as e:
             print(f"Error displaying processed image: {e}")

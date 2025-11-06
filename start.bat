@@ -20,7 +20,7 @@ call venv\Scripts\activate.bat
 
 REM Check if dependencies are installed
 echo 📋 Checking dependencies...
-python -c "import PyQt6, cv2, PIL, mediapipe, numpy" 2>nul
+python -c "import PyQt6, cv2, PIL, rembg, onnxruntime, numpy" 2>nul
 if errorlevel 1 (
     echo 📥 Installing dependencies...
     python -m pip install --upgrade pip

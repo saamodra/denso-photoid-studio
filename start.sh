@@ -23,7 +23,7 @@ source venv/bin/activate
 
 # Check if dependencies are installed
 echo "📋 Checking dependencies..."
-if ! python -c "import PyQt6, cv2, PIL, mediapipe, numpy" 2>/dev/null; then
+if ! python -c "import PyQt6, cv2, PIL, rembg, onnxruntime, numpy" 2>/dev/null; then
     echo "📥 Installing dependencies..."
     pip install --upgrade pip
     pip install -r requirements.txt

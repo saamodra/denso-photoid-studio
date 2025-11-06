@@ -703,7 +703,8 @@ def check_dependencies():
     required_modules = [
         'cv2',
         'PIL',
-        'mediapipe',
+        'rembg',
+        'onnxruntime',
         'numpy',
         'PyQt6'
     ]

@@ -4,10 +4,11 @@ Handles background removal, ID card background application, and image processing
 """
 import cv2
 import io
+import sys
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 import os
-import mediapipe as mp # Tambahkan import untuk MediaPipe
+from rembg import remove, new_session
 from config import PROCESSING_SETTINGS, BACKGROUNDS_DIR, TEMPLATES_DIR, PROCESSED_DIR, BACKGROUND_TEMPLATES, ID_CARD_TEMPLATES
 
 
@@ -19,8 +20,24 @@ class ImageProcessor:
         self.background_templates = self.load_backgrounds()
         self.id_card_templates = self.load_id_card_templates()
         self._font_cache = {}
-        # Inisialisasi model MediaPipe Selfie Segmentation
-        self.selfie_segmentation = mp.solutions.selfie_segmentation.SelfieSegmentation(model_selection=0)
+        # Inisialisasi sesi rembg agar re-use model (lebih cepat & stabil untuk packaging)
+        try:
+            # Cari model ONNX yang sudah dipaketkan bersama aplikasi
+            if hasattr(sys, '_MEIPASS'):
+                assets_dir = os.path.join(sys._MEIPASS, 'assets')
+            else:
+                project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                assets_dir = os.path.join(project_root, 'assets')
+
+            packaged_model = os.path.join(assets_dir, 'models', 'u2net.onnx')
+
+            if os.path.exists(packaged_model):
+                self._rembg_session = new_session(model=packaged_model)
+            else:
+                # Fallback ke model default rembg (akan gunakan cache jika tersedia)
+                self._rembg_session = new_session()
+        except Exception:
+            self._rembg_session = None
 
     def load_backgrounds(self):
         """Load available background templates"""
@@ -101,38 +118,19 @@ class ImageProcessor:
         return gradient
 
     def remove_background(self, image_path):
-        """Remove background from image using MediaPipe"""
+        """Remove background from image using rembg (ONNX-based)."""
         try:
-            # Load image and convert to RGB
-            image = Image.open(image_path).convert('RGB')
+            # Load image and ensure RGBA for alpha handling
+            image = Image.open(image_path).convert('RGBA')
 
-            # Convert PIL Image to NumPy array for MediaPipe processing
-            image_np = np.array(image)
+            # Run rembg background removal. It may return bytes or PIL Image.
+            result = remove(image, session=self._rembg_session) if self._rembg_session else remove(image)
 
-            # Process the image to get the segmentation mask
-            results = self.selfie_segmentation.process(image_np)
-
-            # Create a condition where the mask is > 0.1 (you can adjust this threshold)
-            # This creates a boolean mask of the foreground
-            condition = np.stack((results.segmentation_mask,) * 3, axis=-1) > 0.1
-
-            # Create a transparent background image
-            transparent_bg = np.zeros_like(image_np, dtype=np.uint8)
-
-            # Apply the condition: where condition is true, use original image, else use transparent
-            output_np = np.where(condition, image_np, transparent_bg)
-
-            # Convert back to PIL Image
-            no_bg_image = Image.fromarray(output_np)
-
-            # Add an alpha channel based on the segmentation mask for transparency
-            mask = (results.segmentation_mask * 255).astype('uint8')
-            mask_pil = Image.fromarray(mask, mode='L')
-
-            # Create the final RGBA image
-            final_image = Image.new('RGBA', no_bg_image.size)
-            final_image.paste(no_bg_image, (0,0))
-            final_image.putalpha(mask_pil)
+            if isinstance(result, Image.Image):
+                final_image = result.convert('RGBA')
+            else:
+                # Assume bytes-like
+                final_image = Image.open(io.BytesIO(result)).convert('RGBA')
 
             # Ensure portrait aspect ratio for ID cards
             final_image = self._ensure_portrait_aspect_ratio(final_image)
@@ -140,7 +138,7 @@ class ImageProcessor:
             return final_image
 
         except Exception as e:
-            print(f"Error removing background with MediaPipe: {e}")
+            print(f"Error removing background with rembg: {e}")
             # Fallback: return original image
             original_image = Image.open(image_path)
             return self._ensure_portrait_aspect_ratio(original_image)
@@ -186,11 +184,20 @@ class ImageProcessor:
             template_info = self.id_card_templates[background_type]
             template_path = template_info['path']
             if os.path.exists(template_path):
-                background = Image.open(template_path)
-                # Convert RGBA to RGB if needed
+                # Load image in a way that doesn't keep file handles open (important in PyInstaller)
+                try:
+                    with open(template_path, 'rb') as f:
+                        data = f.read()
+                    background = Image.open(io.BytesIO(data))
+                    background.load()  # fully load into memory, release file
+                except Exception:
+                    # Fallback to direct open
+                    background = Image.open(template_path)
+
+                # Convert RGBA to RGB if needed (avoid writing to disk)
                 if background.mode == 'RGBA':
                     rgb_background = Image.new('RGB', background.size, (255, 255, 255))
-                    rgb_background.paste(background, mask=background.split()[-1] if background.mode == 'RGBA' else None)
+                    rgb_background.paste(background, mask=background.split()[-1])
                     return rgb_background
                 return background
 
