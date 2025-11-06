@@ -99,3 +99,8 @@ Thumbs.db
 !temp/
 !temp/captures/
 !temp/processed/
+
+# Models
+# Ignore all model binaries, keep the directory placeholder
+assets/models/*
+!assets/models/.gitkeep

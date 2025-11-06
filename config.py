@@ -53,9 +53,9 @@ CAPTURES_DIR = os.path.join(TEMP_DIR, 'captures')
 PROCESSED_DIR = os.path.join(TEMP_DIR, 'processed')
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 
-# Ensure directories exist
-for directory in [ASSETS_DIR, BACKGROUNDS_DIR, TEMPLATES_DIR, ICONS_DIR,
-                  TEMP_DIR, CAPTURES_DIR, PROCESSED_DIR, DATA_DIR]:
+# Pastikan hanya direktori yang dapat ditulis yang dibuat.
+# Direktori assets/templates/icons dibundel saat packaging dan tidak perlu dibuat.
+for directory in [TEMP_DIR, CAPTURES_DIR, PROCESSED_DIR, DATA_DIR]:
     os.makedirs(directory, exist_ok=True)
 
 # Background templates
