@@ -64,7 +64,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['matplotlib'],
     noarchive=False,
 )
 
@@ -79,7 +79,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=False,
     disable_windowed_traceback=False,
     target_arch=None,
@@ -97,7 +97,7 @@ exe_console = EXE(
     debug=True,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=True,
     disable_windowed_traceback=False,
     target_arch=None,
@@ -112,7 +112,7 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name='denso-photoid-studio'
 )

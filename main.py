@@ -1,29 +1,18 @@
-"""
+﻿"""
 ID Card Photo Machine - Main Application
 Desktop application for automated ID card photo processing
 """
 import sys
 import os
 from PyQt6.QtWidgets import QApplication, QMessageBox, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt6.QtGui import QIcon, QFont
 
 # Add current directory to path for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from ui.login_window import LoginPage
-from ui.role_selection_window import RoleSelectionWindow
-from ui.dashboard_window import DashboardWindow
-from ui.camera_window import MainWindow as CameraWindow
-from ui.selection_window import SelectionWindow
-from ui.processing_window import ProcessingWindow
-from ui.print_window import PrintWindow
-from ui.loading_window import LoadingWindow
-
-from ui.dialogs.custom_dialog import CustomStyledDialog
 from config import APP_NAME, APP_VERSION, UI_SETTINGS
 from modules.session_manager import session_manager
-from modules.camera_manager import CameraManager
 
 
 class IDCardPhotoApp:
@@ -55,30 +44,99 @@ class IDCardPhotoApp:
 
         self.setup_application()
         self.app.aboutToQuit.connect(self.cleanup_resources)
-        QTimer.singleShot(0, self.preload_camera)
+        self._camera_warmup_thread = None
 
     def get_camera_manager(self):
         """Dapatkan instance CameraManager yang dibagikan"""
         if not self.camera_manager:
+            from modules.camera_manager import CameraManager
             self.camera_manager = CameraManager()
         return self.camera_manager
 
     def preload_camera(self):
-        """Mulai memuat kamera segera setelah aplikasi berjalan"""
-        if self.camera_manager:
+        """(Deprecated) Kept for compatibility; now starts background warmup."""
+        self.start_camera_warmup()
+        return
+
+    def start_camera_warmup(self):
+        """Mulai pemanasan kamera di background tanpa blok UI"""
+        if getattr(self, '_camera_warmup_thread', None) is not None:
             return
 
-        try:
-            print("🎥 Memuat kamera lebih awal...")
-            manager = self.get_camera_manager()
-            warmed = manager.warm_up_camera()
-            if warmed:
-                print("✅ Kamera siap digunakan begitu aplikasi dibuka")
-            else:
-                print("⚠️ Kamera belum siap, akan diproses ulang saat jendela kamera dibuka")
-        except Exception as e:
-            print(f"❌ Gagal melakukan pemanasan kamera awal: {e}")
+        class _Warmup(QThread):
+            def __init__(self, outer):
+                super().__init__()
+                self.outer = outer
+            def run(self):
+                try:
+                    print("Memanaskan kamera di background...")
+                    mgr = self.outer.get_camera_manager()
+                    mgr.warm_up_camera()
+                    print("Pemanasan kamera selesai (background)")
+                except Exception as e:
+                    print(f"Gagal pemanasan kamera (background): {e}")
 
+        self._camera_warmup_thread = _Warmup(self)
+        self._camera_warmup_thread.start()
+
+    def start_rembg_warmup(self):
+        """Preload rembg ONNX model in background"""
+        if getattr(self, '_rembg_warmup_thread', None) is not None:
+            return
+        class _RembgWarm(QThread):
+            def run(self_inner):
+                try:
+                    print("Memuat model penghapus background (rembg) di background...")
+                    from modules.image_processor import preload_rembg_session, get_shared_processor
+                    preload_rembg_session()
+                    # Inisialisasi instance bersama agar siap dipakai di ProcessingWindow
+                    get_shared_processor()
+                    print("Model rembg siap (background)")
+                except Exception as e:
+                    print(f"Gagal memuat model rembg: {e}")
+        self._rembg_warmup_thread = _RembgWarm()
+        self._rembg_warmup_thread.start()
+
+    def show_loading_and_preload(self):
+        """Tampilkan layar loading, preload rembg + kamera, lalu lanjut ke login."""
+        from ui.loading_window import LoadingWindow
+        loader = LoadingWindow()
+        loader.center_on_screen(self.app)
+        loader.show()
+
+        class _Preload(QThread):
+            progress = pyqtSignal(str)
+            done = pyqtSignal()
+            def __init__(self, outer):
+                super().__init__()
+                self.outer = outer
+            def run(self):
+                try:
+                    # 1) Muat model rembg
+                    self.progress.emit("Memuat model penghapus latar...")
+                    from modules.image_processor import preload_rembg_session, get_shared_processor
+                    preload_rembg_session()
+                    get_shared_processor()
+                    # 2) Pemanasan kamera
+                    self.progress.emit("Memanaskan kamera...")
+                    mgr = self.outer.get_camera_manager()
+                    mgr.warm_up_camera()
+                except Exception as e:
+                    print(f"Preload error: {e}")
+                finally:
+                    self.done.emit()
+
+        # Simpan thread & loader sebagai atribut agar tidak di-GC saat berjalan
+        self._preload_thread = _Preload(self)
+        self._loading_window = loader
+        self._preload_thread.progress.connect(lambda text: self._loading_window.loading_label.setText(text))
+        def _finish():
+            if self._loading_window:
+                self._loading_window.close()
+                self._loading_window = None
+            self.show_login_window()
+        self._preload_thread.done.connect(_finish)
+        self._preload_thread.start()
     def setup_application(self):
         """Setup application-wide settings"""
         # Set application font
@@ -133,7 +191,8 @@ class IDCardPhotoApp:
                 print(f"🖥️  Primary screen: {geometry.width()}x{geometry.height()}")
 
             # self.show_main_window()
-            self.show_login_window()
+            # Tampilkan layar loading dan lakukan preload sumber daya berat
+            self.show_loading_and_preload()
 
             print("✅ Application UI should now be visible")
             print("   If you don't see the window, check:")
@@ -160,7 +219,8 @@ class IDCardPhotoApp:
 
             else:
 
-                # Create new main window
+                # Create new main window (lazy import)
+                from ui.login_window import LoginPage
                 self.login_window = LoginPage()
                 # Hubungkan sinyal dari halaman login ke fungsi di atas
                 self.login_window.login_successful.connect(self.login_success)
@@ -214,7 +274,8 @@ class IDCardPhotoApp:
                 # Update user info in existing window with current session data
                 self.dashboard_window.set_session_info(session_manager.get_current_user())
             else:
-                # Create new dashboard window
+                # Create new dashboard window (lazy import)
+                from ui.dashboard_window import DashboardWindow
                 self.dashboard_window = DashboardWindow()
                 self.dashboard_window.start_photo_capture.connect(self.show_camera_window)
                 self.dashboard_window.logout_requested.connect(self.logout)
@@ -251,7 +312,8 @@ class IDCardPhotoApp:
     def show_role_selection_window(self):
         """Show role selection window"""
         try:
-            # Create new role selection window
+            # Create new role selection window (lazy import)
+            from ui.role_selection_window import RoleSelectionWindow
             self.role_selection_window = RoleSelectionWindow()
             # Connect signals from role selection to appropriate functions
             self.role_selection_window.user_role_selected.connect(self.show_dashboard_window)
@@ -344,9 +406,9 @@ class IDCardPhotoApp:
     #             self.employee_list_window.show()
     #             self.employee_list_window.raise_()  # Bring to front
     #             self.employee_list_window.activateWindow()  # Activate window
-                
+
     #         # Di keluarin dari else, supaya full screen pasti
-    #         # 
+    #         #
     #         #  Force window to center and be visible
     #         screen = self.app.primaryScreen()
     #         if screen:
@@ -390,14 +452,14 @@ class IDCardPhotoApp:
             # 4. Tampilkan jendela dalam mode maximized (INI KUNCINYA)
             # Gunakan showMaximized() untuk pengalaman desktop terbaik.
             self.current_window.showMaximized()
-            
+
             # Opsi alternatif jika Anda benar-benar ingin menutupi taskbar:
             # self.current_window.showFullScreen()
 
             # 5. Bawa jendela ke depan (opsional, tapi praktik yang baik)
             self.current_window.raise_()
             self.current_window.activateWindow()
-            
+
             print("✅ Jendela daftar karyawan berhasil ditampilkan dalam mode maximized.")
 
         except Exception as e:
@@ -419,7 +481,8 @@ class IDCardPhotoApp:
                 # Update user info in existing window with current session data
                 self.camera_window.set_session_info(session_manager.get_current_user())
             else:
-                # Create new camera window
+                # Create new camera window (lazy import)
+                from ui.camera_window import MainWindow as CameraWindow
                 self.camera_window = CameraWindow(camera_manager=manager)
                 self.camera_window.photos_captured.connect(self.on_photos_captured)
                 self.camera_window.logout_requested.connect(self.logout)
@@ -475,6 +538,7 @@ class IDCardPhotoApp:
             if self.selection_window:
                 self.selection_window.close()
 
+            from ui.selection_window import SelectionWindow
             self.selection_window = SelectionWindow(self.captured_photos)
             self.selection_window.photo_selected.connect(self.on_photo_selected)
             self.selection_window.back_requested.connect(self.show_camera_window)
@@ -508,6 +572,7 @@ class IDCardPhotoApp:
             if self.processing_window:
                 self.processing_window.close()
 
+            from ui.processing_window import ProcessingWindow
             self.processing_window = ProcessingWindow(self.selected_photo)
             self.processing_window.set_session_info(session_manager.get_current_user())
             self.processing_window.processing_complete.connect(self.on_processing_complete)
@@ -541,6 +606,7 @@ class IDCardPhotoApp:
             if self.print_window:
                 self.print_window.close()
 
+            from ui.print_window import PrintWindow
             self.print_window = PrintWindow(self.processed_image, self.selected_photo)
             self.print_window.print_complete.connect(self.on_print_complete)
             self.print_window.back_requested.connect(self.show_processing_window)
@@ -642,16 +708,19 @@ class IDCardPhotoApp:
 
     def show_error_dialog(self, title, message):
         """Show error dialog"""
+        from ui.dialogs.custom_dialog import CustomStyledDialog
         dialog = CustomStyledDialog(self.current_window, title, message)
         dialog.exec()
 
     def show_info_dialog(self, title, message):
         """Show info dialog"""
+        from ui.dialogs.custom_dialog import CustomStyledDialog
         dialog = CustomStyledDialog(self.current_window, title, message)
         dialog.exec()
 
     def show_warning_dialog(self, title, message):
         """Show warning dialog"""
+        from ui.dialogs.custom_dialog import CustomStyledDialog
         dialog = CustomStyledDialog(self.current_window, title, message)
         dialog.exec()
 
@@ -700,6 +769,9 @@ class IDCardPhotoApp:
 
 def check_dependencies():
     """Check if all required dependencies are available"""
+    # Skip dependency checks in frozen (PyInstaller) builds to speed up startup
+    if getattr(sys, 'frozen', False):
+        return True
     required_modules = [
         'cv2',
         'PIL',
@@ -756,3 +828,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -1,22 +1,23 @@
 # (Tambahkan import ini di bagian atas main.py jika menaruh kelas di sini)
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QProgressBar
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QProgressBar, QSizePolicy
 from PyQt6.QtCore import Qt
 
 class LoadingWindow(QWidget):
     """Widget sederhana untuk menampilkan status loading."""
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Membuatnya tampil seperti splash screen tanpa frame
+        # Tampil sebagai splash sederhana; gunakan latar putih dan teks gelap
         self.setWindowFlags(Qt.WindowType.SplashScreen | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground) # Opsional: background transparan
-        self.setStyleSheet("background-color: rgba(0, 0, 0, 180); border-radius: 10px;") # Latar semi-transparan
+        self.setStyleSheet("background-color: #ffffff; border: 1px solid #E0E0E0; border-radius: 10px;")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(30, 30, 30, 30)
 
-        self.loading_label = QLabel("Memuat Kamera...")
+        self.loading_label = QLabel("Menyiapkan aplikasi...")
         self.loading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.loading_label.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
+        self.loading_label.setStyleSheet("color: #1a1a1a; font-size: 14px; font-weight: normal; margin-bottom: 8px;")
+        self.loading_label.setWordWrap(True)
+        self.loading_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         layout.addWidget(self.loading_label)
 
         # Opsional: Tambahkan progress bar indeterminate
@@ -25,19 +26,19 @@ class LoadingWindow(QWidget):
         self.progress_bar.setTextVisible(False)
         self.progress_bar.setStyleSheet("""
             QProgressBar {
-                border: none;
+                border: 1px solid #D0D0D0;
                 border-radius: 5px;
-                background-color: #555;
+                background-color: #f2f2f2;
                 height: 10px;
             }
             QProgressBar::chunk {
-                background-color: #E60012; /* Warna primer Denso */
+                background-color: #E60012; /* Warna primer */
                 border-radius: 5px;
             }
         """)
         layout.addWidget(self.progress_bar)
 
-        self.setFixedSize(300, 120) # Sesuaikan ukuran
+        self.setFixedSize(360, 130) # Sedikit lebih lebar agar teks tidak terpotong
 
     def center_on_screen(self, app):
         """Pusatkan jendela di layar utama."""
