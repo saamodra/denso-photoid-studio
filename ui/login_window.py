@@ -17,37 +17,44 @@ class LoginPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.current_user = None
+        self._fullscreen_initialized = False
+        self._base_font = QFont("Helvetica", 22)
+        self.setFont(self._base_font)
         self.init_ui()
 
     def init_ui(self):
         """Inisialisasi user interface untuk halaman login."""
         # Layout utama untuk memusatkan kotak login di tengah jendela
         self.setWindowTitle("Login Window")
+        self.setMinimumSize(1280, 800)
         main_layout = QGridLayout(self)
+        main_layout.setContentsMargins(40, 80, 40, 80)
         self.setLayout(main_layout)
 
         # Kontainer untuk elemen-elemen login dengan frame dan style
         login_container = QFrame(self)
         login_container.setFrameShape(QFrame.Shape.StyledPanel)
         login_container.setObjectName("LoginContainer")
-        login_container.setFixedWidth(400) # Atur lebar kotak login
+        login_container.setMinimumWidth(900)
+        login_container.setMaximumWidth(1200) # Biarkan melebar di layar besar
 
         # Layout vertikal untuk isi dari kotak login
         container_layout = QVBoxLayout(login_container)
-        container_layout.setContentsMargins(30, 30, 30, 30)
-        container_layout.setSpacing(15)
+        container_layout.setContentsMargins(50, 60, 50, 60)
+        container_layout.setSpacing(30)
 
         # --- Tambahkan Widget ke Kontainer ---
 
         # Judul
         title = QLabel("Selamat Datang")
-        title.setFont(QFont("Helvetica", 24, QFont.Weight.Bold))
+        title.setFont(QFont("Helvetica", 32, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setObjectName("TitleLabel")
         container_layout.addWidget(title)
 
         # Sub-judul
         subtitle = QLabel("Silakan login untuk melanjutkan")
+        subtitle.setFont(QFont("Helvetica", 18))
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitle.setObjectName("SubtitleLabel")
         container_layout.addWidget(subtitle)
@@ -57,7 +64,7 @@ class LoginPage(QWidget):
         self.id_entry = QLineEdit(self)
         self.id_entry.setPlaceholderText("Masukkan NPK Anda")
         # self.id_entry.setText("2221136")
-        self.id_entry.setMinimumHeight(40)
+        self.id_entry.setMinimumHeight(65)
         container_layout.addWidget(id_label)
         container_layout.addWidget(self.id_entry)
 
@@ -66,7 +73,7 @@ class LoginPage(QWidget):
         self.password_entry = QLineEdit(self)
         self.password_entry.setPlaceholderText("Masukkan Password")
         self.password_entry.setEchoMode(QLineEdit.EchoMode.Password) # Sembunyikan karakter password
-        self.password_entry.setMinimumHeight(40)
+        self.password_entry.setMinimumHeight(65)
         # self.password_entry.setText("admin123")
         container_layout.addWidget(password_label)
         container_layout.addWidget(self.password_entry)
@@ -76,13 +83,13 @@ class LoginPage(QWidget):
 
         # Tombol Login
         self.login_button = QPushButton("Masuk")
-        self.login_button.setMinimumHeight(50)
+        self.login_button.setMinimumHeight(75)
         self.login_button.clicked.connect(self.check_login)
         container_layout.addWidget(self.login_button)
 
         # Keluar Keluar
         self.exit_button = QPushButton("Keluar")
-        self.exit_button.setMinimumHeight(50)
+        self.exit_button.setMinimumHeight(75)
         self.exit_button.clicked.connect(self.handle_exit)
         container_layout.addWidget(self.exit_button)
 
@@ -171,16 +178,16 @@ class LoginPage(QWidget):
             #TitleLabel {
                 color: #E60012; /* merah Denso */
                 font-weight: bold;
-                font-size: 18px;
+                font-size: 36px;
             }
             #SubtitleLabel {
                 color: #555555; /* abu gelap */
-                font-size: 12px;
+                font-size: 22px;
             }
 
             /* Style untuk semua QLabel */
             QLabel {
-                font-size: 13px;
+                font-size: 20px;
                 font-weight: bold;
                 color: #333333; /* teks utama */
             }
@@ -189,8 +196,8 @@ class LoginPage(QWidget):
             QLineEdit {
                 border: 2px solid #CCCCCC;
                 border-radius: 8px;
-                padding: 0 10px;
-                font-size: 14px;
+                padding: 12px 18px;
+                font-size: 22px;
                 background-color: #FFFFFF;
                 color: #333333;
             }
@@ -203,10 +210,10 @@ class LoginPage(QWidget):
                 background-color: #E60012; /* merah Denso */
                 color: #FFFFFF;
                 font-weight: bold;
-                font-size: 14px;
+                font-size: 22px;
                 border: none;
-                border-radius: 25px;
-                padding: 15px 25px;
+                border-radius: 30px;
+                padding: 22px 38px;
             }
             QPushButton:hover {
                 background-color: #CC0010; /* merah lebih gelap */
@@ -224,6 +231,12 @@ class LoginPage(QWidget):
         """
         self.close()
 
+    def showEvent(self, event):
+        """Pastikan jendela langsung fullscreen ketika tampil."""
+        super().showEvent(event)
+        if not self._fullscreen_initialized:
+            self.showFullScreen()
+            self._fullscreen_initialized = True
 
     def closeEvent(self, event):
         """Handle window close event"""

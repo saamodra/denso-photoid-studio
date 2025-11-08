@@ -23,6 +23,7 @@ class HeaderSection:
         welcome_title = QLabel("Selamat Datang di ID Card Photo Machine")
         welcome_title.setFont(QFont("Helvetica", 28, QFont.Weight.Bold))
         welcome_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        welcome_title.setObjectName("WelcomeTitleLabel")
         welcome_title.setStyleSheet("""
             QLabel {
                 color: #E60012;
@@ -35,6 +36,7 @@ class HeaderSection:
         subtitle = QLabel("Sistem Pembuatan Foto ID Card Otomatis")
         subtitle.setFont(QFont("Helvetica", 16))
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        subtitle.setObjectName("SubtitleLabel")
         subtitle.setStyleSheet("""
             QLabel {
                 color: #666666;

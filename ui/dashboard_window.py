@@ -3,7 +3,7 @@ Dashboard/Welcome Window
 Welcome page for logged-in users with options to start photo capture
 """
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                            QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton)
+                            QDialog, QLabel, QPushButton)
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 from datetime import datetime, timedelta
@@ -33,6 +33,8 @@ class DashboardWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.current_user = None
+        self.top_logout_btn = None
+        self.top_start_btn = None
 
         # Initialize components
         self.user_info_section = UserInfoSection()
@@ -63,6 +65,7 @@ class DashboardWindow(QMainWindow):
 
         # Header section
         header_section = HeaderSection.create(self)
+        self.setup_header_controls(header_section)
         main_layout.addWidget(header_section)
 
         # Main content section
@@ -71,6 +74,8 @@ class DashboardWindow(QMainWindow):
 
         # Footer section
         footer_section = self.footer_section.create(self)
+        if self.footer_section.logout_btn:
+            self.footer_section.logout_btn.hide()
         main_layout.addWidget(footer_section)
 
         # Connect signals
@@ -97,22 +102,109 @@ class DashboardWindow(QMainWindow):
 
         # Left side - User info
         user_info_section = self.user_info_section.create(self)
-        layout.addWidget(user_info_section, 40)  # 40% width
+        user_info_section.setMaximumWidth(420)
+        layout.addWidget(user_info_section, 30)  # lebih ramping
 
         # Right side - Action buttons
         action_section = self.action_section.create(self)
-        layout.addWidget(action_section, 60)  # 60% width
+        layout.addWidget(action_section, 70)  # sisanya untuk aksi
 
         return content_frame
 
+    def setup_header_controls(self, header_section):
+        """Place logout and start buttons inline with header title"""
+        layout = header_section.layout()
+        if not layout:
+            return
+
+        welcome_label = header_section.findChild(QLabel, "WelcomeTitleLabel")
+        subtitle_label = header_section.findChild(QLabel, "SubtitleLabel")
+
+        if welcome_label:
+            layout.removeWidget(welcome_label)
+        if subtitle_label:
+            layout.removeWidget(subtitle_label)
+
+        self.ensure_header_buttons()
+
+        button_row = QHBoxLayout()
+        button_row.setContentsMargins(0, 0, 0, 10)
+        button_row.setSpacing(30)
+
+        if self.top_logout_btn:
+            button_row.addWidget(self.top_logout_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        button_row.addStretch()
+        if welcome_label:
+            welcome_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            button_row.addWidget(welcome_label, 0, Qt.AlignmentFlag.AlignCenter)
+        button_row.addStretch()
+        if self.top_start_btn:
+            button_row.addWidget(self.top_start_btn, 0, Qt.AlignmentFlag.AlignRight)
+
+        layout.insertLayout(0, button_row)
+
+        if subtitle_label:
+            subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.insertWidget(1, subtitle_label)
+
+    def ensure_header_buttons(self):
+        """Create styled header buttons if not already created"""
+        if not self.top_logout_btn:
+            self.top_logout_btn = QPushButton("Keluar")
+            self.top_logout_btn.setMinimumHeight(70)
+            self.top_logout_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #3498db;
+                    color: #ffffff;
+                    font-size: 22px;
+                    font-weight: bold;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 18px 36px;
+                }
+                QPushButton:hover {
+                    background-color: #2980b9;
+                }
+                QPushButton:pressed {
+                    background-color: #21618c;
+                }
+            """)
+
+        if not self.top_start_btn:
+            self.top_start_btn = QPushButton("Mulai Foto")
+            self.top_start_btn.setMinimumHeight(80)
+            self.top_start_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #E60012;
+                    color: #ffffff;
+                    font-size: 26px;
+                    font-weight: bold;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 22px 48px;
+                }
+                QPushButton:hover {
+                    background-color: #CC0010;
+                }
+                QPushButton:pressed {
+                    background-color: #99000C;
+                }
+            """)
+
     def connect_signals(self):
         """Connect component signals"""
-        # Connect action section buttons
-        self.action_section.start_photo_btn.clicked.connect(self.start_photo_capture_clicked)
-        self.action_section.instructions_btn.clicked.connect(self.show_instructions)
+        if self.top_start_btn:
+            self.top_start_btn.clicked.connect(self.start_photo_capture_clicked)
+        if self.top_logout_btn:
+            self.top_logout_btn.clicked.connect(self.logout)
 
-        # Connect footer section logout button
-        self.footer_section.logout_btn.clicked.connect(self.logout)
+        if self.action_section.start_photo_btn:
+            self.action_section.start_photo_btn.clicked.connect(self.start_photo_capture_clicked)
+        if self.action_section.instructions_btn:
+            self.action_section.instructions_btn.clicked.connect(self.show_instructions)
+
+        if self.footer_section.logout_btn:
+            self.footer_section.logout_btn.clicked.connect(self.logout)
 
     def set_session_info(self, user_data):
         """Set user session information"""
