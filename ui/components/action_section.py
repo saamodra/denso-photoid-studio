@@ -21,28 +21,7 @@ class ActionSection:
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(20)
 
-        # Main action button - Start Photo Capture
-        self.start_photo_btn = QPushButton("📸 Mulai Pengambilan Foto")
-        self.start_photo_btn.setMinimumHeight(80)
-        self.start_photo_btn.setFont(QFont("Helvetica", 18, QFont.Weight.Bold))
-        self.start_photo_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #E60012;
-                color: white;
-                font-size: 18px;
-                font-weight: bold;
-                border: none;
-                border-radius: 15px;
-                padding: 20px;
-            }
-            QPushButton:hover {
-                background-color: #CC0010;
-            }
-            QPushButton:pressed {
-                background-color: #99000C;
-            }
-        """)
-        layout.addWidget(self.start_photo_btn)
+        self.start_photo_btn = None
 
         # Secondary action button - View Instructions
         self.instructions_btn = QPushButton("📋 Lihat Petunjuk")
