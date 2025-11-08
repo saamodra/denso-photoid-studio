@@ -15,6 +15,7 @@ from modules.camera_manager import CameraManager, CaptureTimer
 from modules.database import db_manager
 from modules.session_manager import session_manager
 from config import UI_SETTINGS, CAMERA_SETTINGS, APP_NAME, ASSETS_DIR
+from ui.components.navigation_header import NavigationHeader
 from ui.dialogs.custom_dialog import CustomStyledDialog
 
 
@@ -122,16 +123,28 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        # Main layout
-        main_layout = QHBoxLayout(central_widget)
+        root_layout = QVBoxLayout(central_widget)
+
+        self.navigation_header = NavigationHeader(
+            step=1,
+            total_steps=4,
+            title="Pengambilan Foto",
+            subtitle="Ambil foto baru sebelum melanjutkan ke pemilihan",
+            show_prev=False,
+            show_next=False,
+        )
+        root_layout.addWidget(self.navigation_header)
+
+        content_layout = QHBoxLayout()
+        root_layout.addLayout(content_layout)
 
         # Camera section (left side)
         camera_section = self.create_camera_section()
-        main_layout.addWidget(camera_section, 70)  # 70% width
+        content_layout.addWidget(camera_section, 70)  # 70% width
 
         # Control section (right side)
         control_section = self.create_control_section()
-        main_layout.addWidget(control_section, 30)  # 30% width
+        content_layout.addWidget(control_section, 30)  # 30% width
 
         # Set style
         self.apply_modern_style()
@@ -316,7 +329,7 @@ class MainWindow(QMainWindow):
             QLabel {
                 background-color: rgba(0, 0, 0, 150);
                 color: white;
-                font-size: 92px;
+                font-size: 72px;
                 font-weight: bold;
                 border-radius: 10px;
                 text-align: center;
@@ -332,7 +345,7 @@ class MainWindow(QMainWindow):
             QLabel {
                 background-color: rgba(255, 255, 255, 200);
                 color: #2c3e50;
-                font-size: 92px;
+                font-size: 72px;
                 font-weight: bold;
                 border-radius: 10px;
                 text-align: center;
@@ -348,7 +361,7 @@ class MainWindow(QMainWindow):
             QLabel {
                 background-color: rgba(0, 0, 0, 150);
                 color: white;
-                font-size: 92px;
+                font-size: 72px;
                 font-weight: bold;
                 border-radius: 10px;
                 text-align: center;
@@ -388,13 +401,12 @@ class MainWindow(QMainWindow):
         """
 
         self.back_to_dashboard_button = QPushButton("← Kembali")
-        self.back_to_dashboard_button.setObjectName("BackDashboardButton")
         self.back_to_dashboard_button.setMinimumHeight(60)
         self.back_to_dashboard_button.setStyleSheet(button_style)
         self.back_to_dashboard_button.clicked.connect(self.cancel_capture_session)
         button_row.addWidget(self.back_to_dashboard_button)
 
-        self.capture_button = QPushButton("📸 Ambil Foto")
+        self.capture_button = QPushButton("📸 Mulai Ambil Foto")
         self.capture_button.setMinimumHeight(60)
         self.capture_button.setStyleSheet(button_style)
         self.capture_button.clicked.connect(self.start_photo_capture)
@@ -943,19 +955,6 @@ class MainWindow(QMainWindow):
             }
             QPushButton:pressed {
                 background-color: #1b2631;
-            }
-            QPushButton#BackDashboardButton {
-                background-color: #E60012;
-                color: #FFFFFF;
-                font-size: 14px;
-                border-radius: 8px;
-                padding: 10px;
-            }
-            QPushButton#BackDashboardButton:hover {
-                background-color: #CC0010;
-            }
-            QPushButton#BackDashboardButton:pressed {
-                background-color: #99000C;
             }
             QComboBox {
                 border: 2px solid #bdc3c7;

@@ -10,6 +10,7 @@ from PyQt6.QtGui import QPixmap, QFont
 from PIL import Image
 import os
 from config import UI_SETTINGS
+from ui.components.navigation_header import NavigationHeader
 
 
 class PhotoThumbnail(QLabel):
@@ -132,18 +133,20 @@ class SelectionWindow(QMainWindow):
         # Main layout
         main_layout = QVBoxLayout(central_widget)
 
-        # Title
-        title = QLabel("Pilih Foto Terbaik Anda")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("""
-            QLabel {
-                font-size: 24px;
-                font-weight: bold;
-                color: #2c3e50;
-                margin: 20px;
-            }
-        """)
-        main_layout.addWidget(title)
+        self.navigation_header = NavigationHeader(
+            step=2,
+            total_steps=4,
+            title="Pilih Foto Terbaik",
+            subtitle="Tentukan foto yang akan diproses lebih lanjut",
+            prev_text="← Kembali ke Kamera",
+            next_text="Lanjut ke Edit Foto →"
+        )
+        self.navigation_header.prev_clicked.connect(self.on_back_clicked)
+        self.navigation_header.next_clicked.connect(self.on_next_clicked)
+        self.navigation_header.set_next_enabled(False)
+        self.back_button = self.navigation_header.prev_button
+        self.next_button = self.navigation_header.next_button
+        main_layout.addWidget(self.navigation_header)
 
         # Content layout
         content_layout = QHBoxLayout()
@@ -156,10 +159,6 @@ class SelectionWindow(QMainWindow):
         # Preview section
         preview_section = self.create_preview_section()
         content_layout.addWidget(preview_section, 40)  # 40% width
-
-        # Button section
-        button_section = self.create_button_section()
-        main_layout.addWidget(button_section)
 
         # Apply styling
         self.apply_style()
@@ -205,6 +204,7 @@ class SelectionWindow(QMainWindow):
         frame.setFrameStyle(QFrame.Shape.StyledPanel)
 
         layout = QVBoxLayout(frame)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Section title
         title = QLabel("Pratinjau")
@@ -233,46 +233,6 @@ class SelectionWindow(QMainWindow):
         """)
         self.preview_label.setText("Klik pada foto\nuntuk melihat pratinjau")
         layout.addWidget(self.preview_label)
-
-        # Photo info
-        self.photo_info = QLabel()
-        self.photo_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.photo_info.setStyleSheet("""
-            QLabel {
-                font-size: 12px;
-                color: #7f8c8d;
-                margin-top: 10px;
-            }
-        """)
-        layout.addWidget(self.photo_info)
-
-        return frame
-
-    def create_button_section(self):
-        """Create button section"""
-        frame = QFrame()
-        layout = QHBoxLayout(frame)
-
-        # Back button
-        self.back_button = QPushButton("← Kembali ke Kamera")
-        self.back_button.setMinimumHeight(50)
-        self.back_button.clicked.connect(self.on_back_clicked)
-
-        # Retake button
-        self.retake_button = QPushButton("📸 Ambil Foto Ulang")
-        self.retake_button.setMinimumHeight(50)
-        self.retake_button.clicked.connect(self.on_retake_clicked)
-
-        # Next button
-        self.next_button = QPushButton("Selanjutnya: Edit Foto →")
-        self.next_button.setMinimumHeight(50)
-        self.next_button.setEnabled(False)
-        self.next_button.clicked.connect(self.on_next_clicked)
-
-        layout.addWidget(self.back_button)
-        layout.addWidget(self.retake_button)
-        layout.addStretch()
-        layout.addWidget(self.next_button)
 
         return frame
 
@@ -354,8 +314,8 @@ class SelectionWindow(QMainWindow):
             file_size = os.path.getsize(photo_path)
             size_mb = file_size / (1024 * 1024)
 
-            self.photo_info.setText(f"File: {filename}\nSize: {size_mb:.1f} MB\nResolution: {image.size[0]}x{image.size[1]}")
-            self.photo_info.setStyleSheet("QLabel { color: #2c3e50; font-size: 12px; }")
+            # Info dimunculkan melalui log untuk debugging
+            print(f"Foto dipilih: {filename} ({size_mb:.1f} MB, {image.size[0]}x{image.size[1]})")
 
             # Clean up temp file
             try:
@@ -366,16 +326,10 @@ class SelectionWindow(QMainWindow):
         except Exception as e:
             print(f"Error updating preview: {e}")
             self.preview_label.setText("Pratinjau\nTidak Tersedia")
-            self.photo_info.setText("Kesalahan memuat info foto")
-            self.photo_info.setStyleSheet("QLabel { color: #e74c3c; font-size: 12px; }")
+            print("Kesalahan memuat info foto")
 
     def on_back_clicked(self):
         """Handle back button click"""
-        self.back_requested.emit()
-        self.close()
-
-    def on_retake_clicked(self):
-        """Handle retake button click"""
         self.back_requested.emit()
         self.close()
 
