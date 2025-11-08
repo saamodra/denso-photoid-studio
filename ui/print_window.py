@@ -16,6 +16,7 @@ from modules.print_manager import PrintManager
 from modules.database import db_manager
 from modules.session_manager import session_manager
 from config import PRINT_SETTINGS
+from ui.components.navigation_header import NavigationHeader
 
 
 class PrintThread(QThread):
@@ -97,10 +98,29 @@ class PrintWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
+        root_layout = QVBoxLayout(central_widget)
+        root_layout.setContentsMargins(10, 10, 10, 10)
+        root_layout.setSpacing(10)
+
+        self.navigation_header = NavigationHeader(
+            step=4,
+            total_steps=4,
+            title="Pratinjau & Cetak",
+            subtitle="Periksa hasil akhir dan selesaikan sesi",
+            prev_text="← Kembali ke Edit Foto",
+            next_text="Selesaikan Sesi"
+        )
+        self.navigation_header.prev_clicked.connect(self.on_back_clicked)
+        self.navigation_header.next_clicked.connect(self.on_finish_clicked)
+        self.back_button = self.navigation_header.prev_button
+        self.finish_button = self.navigation_header.next_button
+        root_layout.addWidget(self.navigation_header)
+
         # Main layout - use horizontal layout for better space utilization
-        main_layout = QHBoxLayout(central_widget)
-        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout = QHBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(10)
+        root_layout.addLayout(main_layout)
 
         # Left side - Preview section (portrait orientation)
         left_layout = QVBoxLayout()
@@ -110,19 +130,6 @@ class PrintWindow(QMainWindow):
         # Right side - Settings and controls
         right_layout = QVBoxLayout()
         right_layout.setSpacing(10)
-
-        # Title
-        title = QLabel("Pratinjau Cetak - ID Card")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("""
-            QLabel {
-                font-size: 18px;
-                font-weight: bold;
-                color: #2c3e50;
-                margin: 10px;
-            }
-        """)
-        right_layout.addWidget(title)
 
         # Settings section
         settings_section = self.create_settings_section()
@@ -341,11 +348,6 @@ class PrintWindow(QMainWindow):
         # All buttons in a single row for compactness
         button_row = QHBoxLayout()
 
-        # Back button
-        self.back_button = QPushButton("← Kembali")
-        self.back_button.setMinimumHeight(40)
-        self.back_button.clicked.connect(self.on_back_clicked)
-
         # Save button
         self.save_button = QPushButton("💾 Simpan")
         self.save_button.setMinimumHeight(40)
@@ -356,15 +358,9 @@ class PrintWindow(QMainWindow):
         self.print_button.setMinimumHeight(40)
         self.print_button.clicked.connect(self.print_id_card)
 
-        # Finish button to end session
-        self.finish_button = QPushButton("✅ Selesai")
-        self.finish_button.setMinimumHeight(40)
-        self.finish_button.clicked.connect(self.on_finish_clicked)
-
-        button_row.addWidget(self.back_button)
         button_row.addWidget(self.save_button)
         button_row.addWidget(self.print_button)
-        button_row.addWidget(self.finish_button)
+        button_row.addStretch()
 
         layout.addLayout(button_row)
 

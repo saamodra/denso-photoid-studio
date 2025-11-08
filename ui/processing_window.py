@@ -3,7 +3,7 @@ Processing Window UI
 Interface for background removal and editing
 """
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                            QLabel, QPushButton, QGridLayout, QFrame,
+                            QLabel, QPushButton, QFrame,
                             QScrollArea, QSlider, QGroupBox, QProgressBar,
                             QButtonGroup, QRadioButton, QFileDialog, QMessageBox)
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
@@ -15,6 +15,7 @@ from modules.image_processor import get_shared_processor
 from modules.session_manager import session_manager
 from config import UI_SETTINGS
 from datetime import datetime
+from ui.components.navigation_header import NavigationHeader
 
 
 class ProcessingThread(QThread):
@@ -55,105 +56,6 @@ class ProcessingThread(QThread):
             self.error_occurred.emit(str(e))
 
 
-class BackgroundOption(QWidget):
-    """Custom background option widget"""
-
-    selected = pyqtSignal(str)  # Emits background type when selected
-
-    def __init__(self, background_type, processor):
-        super().__init__()
-        self.background_type = background_type
-        self.processor = processor
-        self.is_selected = False
-        self.setup_ui()
-
-    def setup_ui(self):
-        """Setup background option UI"""
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)  # Remove spacing
-
-        # Background preview
-        self.preview_label = QLabel()
-        self.preview_label.setFixedSize(192, 256)  # Larger preview for better visibility
-        self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.preview_label.setStyleSheet(self.get_preview_style())
-        layout.addWidget(self.preview_label)
-
-        # Load preview
-        self.load_preview()
-
-        # Enable click
-        self.mousePressEvent = self.on_clicked
-
-    def get_preview_style(self):
-        """Get preview style based on selection"""
-        if self.is_selected:
-            return """
-                QLabel {
-                    border: 3px solid #3498db;
-                    border-radius: 8px;
-                    background-color: #ebf3fd;
-                }
-            """
-        else:
-            return """
-                QLabel {
-                    border: 2px solid #bdc3c7;
-                    border-radius: 8px;
-                    background-color: white;
-                }
-                QLabel:hover {
-                    border: 2px solid #85c1e9;
-                }
-            """
-
-    def load_preview(self):
-        """Load background preview"""
-        try:
-            # Get small background sample
-            background = self.processor.get_background(self.background_type)
-            if background:
-                background.thumbnail((192, 256), Image.Resampling.LANCZOS)
-
-                # Save temporary preview (Windows-safe)
-                tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
-                temp_path = tmp.name
-                tmp.close()
-                background.save(temp_path, "JPEG", quality=85)
-
-                pixmap = QPixmap(temp_path)
-                # Scale while maintaining aspect ratio
-                scaled_pixmap = pixmap.scaled(
-                    192, 256, Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
-                )
-                self.preview_label.setPixmap(scaled_pixmap)
-                self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-                # Clean up
-                try:
-                    os.remove(temp_path)
-                except Exception:
-                    pass
-            else:
-                self.preview_label.setText("Preview\nN/A")
-
-        except Exception as e:
-            print(f"Error loading background preview: {e}")
-            self.preview_label.setText("Error")
-
-    def set_selected(self, selected):
-        """Set selection state"""
-        self.is_selected = selected
-        self.preview_label.setStyleSheet(self.get_preview_style())
-
-    def on_clicked(self, event):
-        """Handle click event"""
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.selected.emit(self.background_type)
-
-
 class ProcessingWindow(QMainWindow):
     """Photo processing window"""
 
@@ -169,11 +71,11 @@ class ProcessingWindow(QMainWindow):
         self.processed_image = None
         self.current_user = session_manager.get_current_user()
         self.current_background = 'denso_id_card'  # Default to denso template
-        self.background_options = []
         self.save_button = None
+        self.process_button = None
         self.init_ui()
         self.load_original_image()
-        self.create_background_options()
+        QTimer.singleShot(250, self.process_photo)
 
     def init_ui(self):
         """Initialize user interface"""
@@ -188,38 +90,28 @@ class ProcessingWindow(QMainWindow):
         # Main layout
         main_layout = QVBoxLayout(central_widget)
 
-        # Title
-        title = QLabel("Hapus Background & Terapkan Background ID Card")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("""
-            QLabel {
-                font-size: 20px;
-                font-weight: bold;
-                color: #2c3e50;
-                margin: 15px;
-            }
-        """)
-        main_layout.addWidget(title)
+        self.navigation_header = NavigationHeader(
+            step=3,
+            total_steps=4,
+            title="Edit & Sesuaikan Foto",
+            subtitle="Proses foto secara otomatis",
+            prev_text="← Kembali ke Pemilihan Foto",
+            next_text="Lanjut ke Pratinjau Cetak →"
+        )
+        self.navigation_header.prev_clicked.connect(self.on_back_clicked)
+        self.navigation_header.next_clicked.connect(self.on_next_clicked)
+        self.navigation_header.set_next_enabled(False)
+        self.back_button = self.navigation_header.prev_button
+        self.next_button = self.navigation_header.next_button
+        main_layout.addWidget(self.navigation_header)
 
-        # Content layout
-        content_layout = QHBoxLayout()
-        main_layout.addLayout(content_layout)
-
-        # Before/After section
+        # Content layout - previews only
         preview_section = self.create_preview_section()
-        content_layout.addWidget(preview_section, 70)  # 70% width
-
-        # Controls section
-        controls_section = self.create_controls_section()
-        content_layout.addWidget(controls_section, 30)  # 30% width
+        main_layout.addWidget(preview_section)
 
         # Progress section
         progress_section = self.create_progress_section()
         main_layout.addWidget(progress_section)
-
-        # Button section
-        button_section = self.create_button_section()
-        main_layout.addWidget(button_section)
 
         # Apply styling
         self.apply_style()
@@ -299,50 +191,19 @@ class ProcessingWindow(QMainWindow):
                 color: #7f8c8d;
             }
         """)
-        self.processed_label.setText("Klik 'Proses Foto'\nuntuk melihat hasil")
+        self.processed_label.setText("Memproses otomatis...\nSilakan tunggu")
         after_section_layout.addWidget(self.processed_label)
 
         content_layout.addWidget(before_section)
         content_layout.addWidget(after_section)
         layout.addLayout(content_layout)
 
-        return frame
-
-    def create_controls_section(self):
-        """Create controls section"""
-        frame = QFrame()
-        frame.setFrameStyle(QFrame.Shape.StyledPanel)
-
-        layout = QVBoxLayout(frame)
-
-        # Title - aligned with other section titles
-        title = QLabel("Pilihan Background")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("""
-            QLabel {
-                font-size: 14px;
-                font-weight: bold;
-                color: #34495e;
-                margin-bottom: 10px;
-            }
-        """)
-        layout.addWidget(title)
-
-        # Add spacing to align with image previews
-        layout.addSpacing(20)
-
-        self.backgrounds_container = QWidget()
-        self.backgrounds_layout = QGridLayout(self.backgrounds_container)
-        self.backgrounds_layout.setSpacing(10)
-        self.backgrounds_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
-
-        layout.addWidget(self.backgrounds_container)
-
-        # Process button
-        self.process_button = QPushButton("🎨 Proses Foto")
-        self.process_button.setMinimumHeight(50)
-        self.process_button.clicked.connect(self.process_photo)
-        layout.addWidget(self.process_button)
+        if self.debug_save_enabled:
+            self.save_button = QPushButton("💾 Simpan Hasil")
+            self.save_button.setMinimumHeight(45)
+            self.save_button.setEnabled(False)
+            self.save_button.clicked.connect(self.save_processed_image)
+            layout.addWidget(self.save_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         return frame
 
@@ -359,42 +220,6 @@ class ProcessingWindow(QMainWindow):
         self.progress_bar = QProgressBar()
         self.progress_bar.hide()
         layout.addWidget(self.progress_bar)
-
-        return frame
-
-    def create_button_section(self):
-        """Create button section"""
-        frame = QFrame()
-        layout = QHBoxLayout(frame)
-
-        # Back button
-        self.back_button = QPushButton("← Kembali ke Pilihan")
-        self.back_button.setMinimumHeight(50)
-        self.back_button.clicked.connect(self.on_back_clicked)
-
-        # Reset button
-        self.reset_button = QPushButton("🔄 Ulangi")
-        self.reset_button.setMinimumHeight(50)
-        self.reset_button.clicked.connect(self.reset_processing)
-
-        if self.debug_save_enabled:
-            self.save_button = QPushButton("💾 Simpan Hasil")
-            self.save_button.setMinimumHeight(50)
-            self.save_button.setEnabled(False)
-            self.save_button.clicked.connect(self.save_processed_image)
-
-        # Next button
-        self.next_button = QPushButton("Selanjutnya: Pratinjau Cetak →")
-        self.next_button.setMinimumHeight(50)
-        self.next_button.setEnabled(False)
-        self.next_button.clicked.connect(self.on_next_clicked)
-
-        layout.addWidget(self.back_button)
-        layout.addWidget(self.reset_button)
-        if self.save_button:
-            layout.addWidget(self.save_button)
-        layout.addStretch()
-        layout.addWidget(self.next_button)
 
         return frame
 
@@ -429,33 +254,6 @@ class ProcessingWindow(QMainWindow):
             print(f"Error loading original image: {e}")
             self.original_label.setText("Error loading\noriginal image")
 
-    def create_background_options(self):
-        """Create background option widgets - only white and denso template"""
-        # Clear existing options
-        for option in self.background_options:
-            option.setParent(None)
-        self.background_options.clear()
-
-        # Only show white and denso template options
-        backgrounds = ['denso_id_card', 'white_solid']
-
-        # Create option widgets
-        for i, bg_type in enumerate(backgrounds):
-            row = i // 2
-            col = i % 2
-
-            option = BackgroundOption(bg_type, self.processor)
-            option.selected.connect(self.on_background_selected)
-
-            self.backgrounds_layout.addWidget(option, row, col)
-            self.background_options.append(option)
-
-        # Select first option by default and update current_background
-        if self.background_options:
-            self.background_options[0].set_selected(True)
-            # Update current_background to match the first selected option
-            self.current_background = self.background_options[0].background_type
-
     def set_session_info(self, user_data):
         """Set session information from outside the window"""
         self.update_user_info(user_data)
@@ -470,25 +268,6 @@ class ProcessingWindow(QMainWindow):
         if user:
             self.current_user = user
 
-    def on_background_selected(self, background_type):
-        """Handle background selection"""
-        # Clear previous selection
-        for option in self.background_options:
-            option.set_selected(False)
-
-        # Set new selection
-        for option in self.background_options:
-            if option.background_type == background_type:
-                option.set_selected(True)
-                break
-
-        self.current_background = background_type
-
-        # Re-process if already processed
-        if self.processed_image:
-            self.process_photo()
-
-
     def process_photo(self):
         """Process photo with current settings"""
         if self.processing_thread and self.processing_thread.isRunning():
@@ -498,7 +277,8 @@ class ProcessingWindow(QMainWindow):
         self.progress_bar.show()
         self.progress_bar.setValue(0)
         self.progress_label.setText("Memproses foto...")
-        self.process_button.setEnabled(False)
+        if self.process_button:
+            self.process_button.setEnabled(False)
         if self.save_button:
             self.save_button.setEnabled(False)
 
@@ -528,7 +308,8 @@ class ProcessingWindow(QMainWindow):
         # Hide progress and enable buttons
         self.progress_bar.hide()
         self.progress_label.setText("Pemrosesan selesai!")
-        self.process_button.setEnabled(True)
+        if self.process_button:
+            self.process_button.setEnabled(True)
         self.next_button.setEnabled(True)
         if self.save_button:
             self.save_button.setEnabled(True)
@@ -540,7 +321,8 @@ class ProcessingWindow(QMainWindow):
         """Handle processing error"""
         self.progress_bar.hide()
         self.progress_label.setText(f"Error: {error_message}")
-        self.process_button.setEnabled(True)
+        if self.process_button:
+            self.process_button.setEnabled(True)
         self.processed_label.setText(f"Kesalahan Pemrosesan:\n{error_message}")
         if self.save_button:
             self.save_button.setEnabled(False)
