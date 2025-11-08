@@ -5,7 +5,8 @@ Camera preview and capture functionality
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                             QLabel, QPushButton, QComboBox, QGridLayout,
                             QFrame, QProgressBar, QSpinBox, QGroupBox, QDialog)
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QUrl
+from PyQt6.QtMultimedia import QSoundEffect
 from PyQt6.QtGui import QPixmap, QFont, QPalette
 import cv2
 import numpy as np
@@ -13,7 +14,7 @@ import os
 from modules.camera_manager import CameraManager, CaptureTimer
 from modules.database import db_manager
 from modules.session_manager import session_manager
-from config import UI_SETTINGS, CAMERA_SETTINGS, APP_NAME
+from config import UI_SETTINGS, CAMERA_SETTINGS, APP_NAME, ASSETS_DIR
 from ui.dialogs.custom_dialog import CustomStyledDialog
 
 
@@ -87,7 +88,10 @@ class MainWindow(QMainWindow):
         self.photo_capture_thread = None
         self.countdown_active = False
         self.current_user = None
+        self.tick_sound = None
+        self.shutter_sound = None
         self.init_ui()
+        self._init_sounds()
 
         # Force window to be visible
         self.show()
@@ -131,6 +135,25 @@ class MainWindow(QMainWindow):
 
         # Set style
         self.apply_modern_style()
+
+    def _init_sounds(self):
+        """Prepare sound effects for countdown and shutter."""
+        self.tick_sound = self._load_sound("tick.wav", 0.6)
+        self.shutter_sound = self._load_sound("shutter.wav", 0.9)
+
+    def _load_sound(self, filename, volume):
+        """Load sound effect safely."""
+        try:
+            sound_path = os.path.join(ASSETS_DIR, "sounds", filename)
+            if os.path.exists(sound_path):
+                sound = QSoundEffect(self)
+                sound.setSource(QUrl.fromLocalFile(sound_path))
+                sound.setVolume(volume)
+                return sound
+            print(f"Sound not found at {sound_path}")
+        except Exception as e:
+            print(f"Gagal memuat efek suara {filename}: {e}")
+        return None
 
     def get_config_value(self, config_name, default_value):
         """Get configuration value from database with fallback to default"""
@@ -293,7 +316,7 @@ class MainWindow(QMainWindow):
             QLabel {
                 background-color: rgba(0, 0, 0, 150);
                 color: white;
-                font-size: 72px;
+                font-size: 92px;
                 font-weight: bold;
                 border-radius: 10px;
                 text-align: center;
@@ -307,9 +330,9 @@ class MainWindow(QMainWindow):
         self.capture_overlay.setParent(self.camera_container)
         self.capture_overlay.setStyleSheet("""
             QLabel {
-                background-color: rgba(255, 0, 0, 100);
-                color: white;
-                font-size: 48px;
+                background-color: rgba(255, 255, 255, 200);
+                color: #2c3e50;
+                font-size: 92px;
                 font-weight: bold;
                 border-radius: 10px;
                 text-align: center;
@@ -323,9 +346,9 @@ class MainWindow(QMainWindow):
         self.delay_overlay.setParent(self.camera_container)
         self.delay_overlay.setStyleSheet("""
             QLabel {
-                background-color: rgba(0, 100, 0, 150);
+                background-color: rgba(0, 0, 0, 150);
                 color: white;
-                font-size: 36px;
+                font-size: 92px;
                 font-weight: bold;
                 border-radius: 10px;
                 text-align: center;
@@ -480,6 +503,26 @@ class MainWindow(QMainWindow):
         self.current_user = user_data
         self.update_user_info()
 
+    def _play_tick_sound(self):
+        """Play tick sound if available."""
+        if self.tick_sound:
+            try:
+                if self.tick_sound.isPlaying():
+                    self.tick_sound.stop()
+                self.tick_sound.play()
+            except Exception as e:
+                print(f"Gagal memutar efek suara: {e}")
+
+    def _play_shutter_sound(self):
+        """Play shutter sound when capturing photo."""
+        if self.shutter_sound:
+            try:
+                if self.shutter_sound.isPlaying():
+                    self.shutter_sound.stop()
+                self.shutter_sound.play()
+            except Exception as e:
+                print(f"Gagal memutar suara shutter: {e}")
+
     def update_user_info(self):
         """Update user information display"""
         if self.current_user:
@@ -620,7 +663,7 @@ class MainWindow(QMainWindow):
 
         # Camera status
         self.camera_status = QLabel("Kamera: Memulai...")
-        self.camera_status.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; }")
+        self.camera_status.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; font-size: 18px; }")
         layout.addWidget(self.camera_status)
 
         # Camera error label
@@ -629,12 +672,12 @@ class MainWindow(QMainWindow):
             QLabel {
                 color: #DC3545;
                 font-weight: bold;
-                font-size: 11px;
+                font-size: 14px;
                 background-color: #F8D7DA;
                 border: 1px solid #F5C6CB;
                 border-radius: 4px;
-                padding: 5px;
-                margin-top: 3px;
+                padding: 8px;
+                margin-top: 6px;
             }
         """)
         self.camera_error_label.hide()
@@ -647,7 +690,7 @@ class MainWindow(QMainWindow):
 
         # Photo counter
         self.photo_counter = QLabel("Foto diambil: 0")
-        self.photo_counter.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; }")
+        self.photo_counter.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; font-size: 18px; }")
         layout.addWidget(self.photo_counter)
 
         return group
@@ -773,6 +816,7 @@ class MainWindow(QMainWindow):
     def update_countdown(self, count):
         """Update countdown display"""
         # Show countdown overlay
+        self._play_tick_sound()
         self.countdown_label.setText(str(count))
         # Position countdown to cover the entire camera container
         self.countdown_label.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
@@ -804,8 +848,11 @@ class MainWindow(QMainWindow):
         # Hide delay overlay if it's showing
         self.delay_overlay.hide()
 
+        # Play shutter sound effect
+        self._play_shutter_sound()
+
         # Show capture overlay
-        self.capture_overlay.setText(f"📸 MENGAMBIL FOTO\nFoto {current}/{total}")
+        self.capture_overlay.setText(f"1\n{current}/{total}")
         self.capture_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
         self.capture_overlay.show()
         self.capture_overlay.raise_()
@@ -821,7 +868,8 @@ class MainWindow(QMainWindow):
     def on_delay_countdown(self, current, total, remaining):
         """Handle delay countdown between photos"""
         # Show delay overlay
-        self.delay_overlay.setText(f"⏱️ JEDA\nFoto berikutnya dalam {remaining}s\nFoto {current}/{total}")
+        self._play_tick_sound()
+        self.delay_overlay.setText(f"{remaining}\n{current}/{total}")
         self.delay_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
         self.delay_overlay.show()
         self.delay_overlay.raise_()
