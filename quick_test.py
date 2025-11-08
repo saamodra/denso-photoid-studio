@@ -6,13 +6,20 @@ Usage: python quick_test.py [window_name]
 import sys
 import os
 import argparse
+from datetime import datetime
 from pathlib import Path
+
+import cv2
+import numpy as np
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QTimer
 
 # Add the project directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from config import CAMERA_SETTINGS, CAPTURES_DIR, UI_SETTINGS
+from modules.camera_manager import CameraManager
+from modules.database import db_manager
 from modules.session_manager import session_manager
 
 
@@ -23,7 +30,7 @@ def parse_args():
     )
     parser.add_argument(
         "window",
-        choices=["processing", "print", "selection", "main", "admin"],
+        choices=["processing", "print", "selection", "main", "admin", "camera"],
         help="Jenis jendela yang ingin diuji.",
     )
     parser.add_argument(
@@ -49,6 +56,11 @@ def parse_args():
     parser.add_argument(
         "--photo",
         help="Path foto lokal untuk pengujian ProcessingWindow.",
+    )
+    parser.add_argument(
+        "--real-camera",
+        action="store_true",
+        help="Gunakan kamera fisik saat menguji jendela kamera.",
     )
     parser.add_argument(
         "--no-auto-process",
@@ -171,6 +183,129 @@ def test_admin():
     window.show()
     return app.exec()
 
+
+class MockCameraManager(CameraManager):
+    """Kamera tiruan agar CameraWindow dapat diuji tanpa perangkat keras."""
+
+    def __init__(self, fps: int = 15):
+        self._mock_cameras = [{
+            "index": 0,
+            "backend": None,
+            "name": "Mock Camera",
+            "resolution": UI_SETTINGS["camera_preview_size"],
+        }]
+        self._fps = max(1, fps)
+        self._preview_timer: QTimer | None = None
+        self._frame_callback = None
+        self._tick = 0
+        super().__init__()
+        self.available_cameras = list(self._mock_cameras)
+        self.current_camera_index = 0
+        self.camera_thread = None
+
+    def detect_cameras(self):
+        """Lewati deteksi hardware dan gunakan konfigurasi mock."""
+        return list(self._mock_cameras)
+
+    def start_preview(self, frame_callback=None):
+        """Mulai timer yang memancarkan frame simulasi."""
+        self.stop_preview()
+        self._frame_callback = frame_callback
+        if self._preview_timer is None:
+            self._preview_timer = QTimer()
+            self._preview_timer.timeout.connect(self._emit_frame)
+
+        interval = max(1, int(1000 / self._fps))
+        self._preview_timer.start(interval)
+
+    def stop_preview(self):
+        """Hentikan timer simulasi."""
+        if self._preview_timer and self._preview_timer.isActive():
+            self._preview_timer.stop()
+        self._frame_callback = None
+        self.camera_thread = None
+
+    def capture_photo(self, save_path=None):
+        """Simpan frame terakhir agar alur capture tetap berjalan."""
+        frame = self.current_frame.copy() if self.current_frame is not None else self._generate_frame()
+
+        if save_path is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+            os.makedirs(CAPTURES_DIR, exist_ok=True)
+            save_path = os.path.join(CAPTURES_DIR, f"mock_capture_{timestamp}.jpg")
+
+        cv2.imwrite(save_path, frame, [cv2.IMWRITE_JPEG_QUALITY, CAMERA_SETTINGS["capture_quality"]])
+        return save_path
+
+    def _emit_frame(self):
+        """Buat frame baru lalu kirim ke callback UI."""
+        frame = self._generate_frame()
+        self.current_frame = frame
+
+        if self._frame_callback:
+            self._frame_callback(frame.copy())
+
+        self._tick += 1
+
+    def _generate_frame(self):
+        """Hasilkan frame BGR dengan animasi sederhana."""
+        width, height = UI_SETTINGS["camera_preview_size"]
+        frame = np.zeros((height, width, 3), dtype=np.uint8)
+
+        gradient = np.linspace(50, 180, width, dtype=np.uint8)
+        frame[:, :, 0] = gradient
+        frame[:, :, 1] = gradient[::-1]
+        frame[:, :, 2] = 120
+
+        center_x = int((np.sin(self._tick / 10.0) * 0.4 + 0.5) * width)
+        center_y = int((np.cos(self._tick / 12.0) * 0.4 + 0.5) * height)
+        cv2.circle(frame, (center_x, center_y), 90, (40, 40, 200), thickness=-1)
+
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        cv2.putText(frame, "Kamera Simulasi", (40, 70), cv2.FONT_HERSHEY_SIMPLEX, 1.5,
+                    (255, 255, 255), 3, cv2.LINE_AA)
+        cv2.putText(frame, f"Waktu: {timestamp}", (40, height - 60), cv2.FONT_HERSHEY_SIMPLEX,
+                    1.0, (230, 230, 230), 2, cv2.LINE_AA)
+        return frame
+
+
+def ensure_default_camera_config(camera_name: str):
+    """Pastikan konfigurasi default_camera sesuai dengan kamera yang dipakai."""
+    current = db_manager.get_app_config("default_camera")
+    if current != camera_name:
+        db_manager.set_app_config("default_camera", camera_name)
+
+
+def build_camera_manager(use_mock: bool):
+    if use_mock:
+        manager = MockCameraManager()
+        ensure_default_camera_config(manager.get_available_cameras()[0]["name"])
+        print("Menggunakan kamera simulasi.")
+        return manager
+
+    manager = CameraManager()
+    cameras = manager.get_available_cameras()
+    if not cameras:
+        print("Tidak ada kamera fisik yang terdeteksi. Menggunakan simulasi.")
+        return build_camera_manager(use_mock=True)
+
+    ensure_default_camera_config(cameras[0]["name"])
+    print(f"Menggunakan kamera fisik: {cameras[0]['name']}")
+    return manager
+
+
+def test_camera(args):
+    """Quick test of camera window."""
+    from ui.camera_window import MainWindow
+
+    app = QApplication(sys.argv)
+    set_test_session(args)
+    camera_manager = build_camera_manager(use_mock=not args.real_camera)
+    window = MainWindow(camera_manager=camera_manager)
+    window.set_session_info(session_manager.get_current_user())
+    window.show()
+    return app.exec()
+
 if __name__ == "__main__":
     args = parse_args()
 
@@ -184,3 +319,5 @@ if __name__ == "__main__":
         test_main()
     elif args.window == "admin":
         test_admin()
+    elif args.window == "camera":
+        test_camera(args)

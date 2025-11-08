@@ -339,12 +339,11 @@ class MainWindow(QMainWindow):
         self.capture_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
         self.delay_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
 
-        layout.addWidget(self.camera_container)
+        # Action buttons (back + capture) placed above camera preview
+        button_row = QHBoxLayout()
+        button_row.setSpacing(12)
 
-        # Capture button
-        self.capture_button = QPushButton("📸 Ambil Foto")
-        self.capture_button.setMinimumHeight(60)
-        self.capture_button.setStyleSheet("""
+        button_style = """
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -363,10 +362,23 @@ class MainWindow(QMainWindow):
             QPushButton:disabled {
                 background-color: #95a5a6;
             }
-        """)
-        self.capture_button.clicked.connect(self.start_photo_capture)
+        """
 
-        layout.addWidget(self.capture_button)
+        self.back_to_dashboard_button = QPushButton("← Kembali")
+        self.back_to_dashboard_button.setObjectName("BackDashboardButton")
+        self.back_to_dashboard_button.setMinimumHeight(60)
+        self.back_to_dashboard_button.setStyleSheet(button_style)
+        self.back_to_dashboard_button.clicked.connect(self.cancel_capture_session)
+        button_row.addWidget(self.back_to_dashboard_button)
+
+        self.capture_button = QPushButton("📸 Ambil Foto")
+        self.capture_button.setMinimumHeight(60)
+        self.capture_button.setStyleSheet(button_style)
+        self.capture_button.clicked.connect(self.start_photo_capture)
+        button_row.addWidget(self.capture_button, 1)
+
+        layout.addLayout(button_row)
+        layout.addWidget(self.camera_container)
 
         return camera_frame
 
@@ -389,17 +401,13 @@ class MainWindow(QMainWindow):
         """)
         layout.addWidget(title)
 
-        # Camera selection
-        camera_group = self.create_camera_selection_group()
-        layout.addWidget(camera_group)
-
-        # Capture settings
-        capture_group = self.create_capture_settings_group()
-        layout.addWidget(capture_group)
-
-        # User info section
-        user_group = self.create_user_info_group()
-        layout.addWidget(user_group)
+        # Hidden groups (still created for logic but tidak ditampilkan)
+        self._hidden_camera_group = self.create_camera_selection_group()
+        self._hidden_camera_group.hide()
+        self._hidden_capture_group = self.create_capture_settings_group()
+        self._hidden_capture_group.hide()
+        self._hidden_user_group = self.create_user_info_group()
+        self._hidden_user_group.hide()
 
         # Status section
         status_group = self.create_status_group()
@@ -447,17 +455,6 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.user_role_label)
         layout.addWidget(self.user_department_label)
 
-        # Action buttons container
-        action_buttons_layout = QVBoxLayout()
-        action_buttons_layout.setSpacing(8)
-
-        # Back to dashboard button
-        self.back_to_dashboard_button = QPushButton("← Kembali ke Dashboard")
-        self.back_to_dashboard_button.setObjectName("BackDashboardButton")
-        self.back_to_dashboard_button.setMinimumHeight(40)
-        self.back_to_dashboard_button.clicked.connect(self.cancel_capture_session)
-        action_buttons_layout.addWidget(self.back_to_dashboard_button)
-
         # Logout button
         logout_btn = QPushButton("Keluar")
         logout_btn.setStyleSheet("""
@@ -474,9 +471,7 @@ class MainWindow(QMainWindow):
             }
         """)
         logout_btn.clicked.connect(self.logout)
-        action_buttons_layout.addWidget(logout_btn)
-
-        layout.addLayout(action_buttons_layout)
+        layout.addWidget(logout_btn)
 
         return group
 
