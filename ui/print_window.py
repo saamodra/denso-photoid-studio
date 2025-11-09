@@ -3,9 +3,9 @@ Print Window UI
 Interface for print preview and printing
 """
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                            QLabel, QPushButton, QGridLayout, QFrame,
-                            QSpinBox, QGroupBox, QMessageBox,
-                            QProgressBar)
+                            QLabel, QPushButton, QFrame,
+                            QGroupBox, QMessageBox,
+                            QProgressBar, QSizePolicy)
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from PyQt6.QtGui import QPixmap
 from PIL import Image
@@ -15,7 +15,6 @@ from datetime import datetime
 from modules.print_manager import PrintManager
 from modules.database import db_manager
 from modules.session_manager import session_manager
-from config import PRINT_SETTINGS
 from ui.components.navigation_header import NavigationHeader
 
 
@@ -71,6 +70,11 @@ class PrintThread(QThread):
 
 class PrintWindow(QMainWindow):
     """Print preview and printing window"""
+    # Slightly smaller preview surface so the card fits on low-resolution displays
+    PREVIEW_TARGET_WIDTH = 420
+    PREVIEW_TARGET_HEIGHT = 640
+    PREVIEW_PADDING = 30  # matches QLabel padding defined in the stylesheet
+    PREVIEW_SCALE_FACTOR = 0.85  # additional shrink so nothing gets clipped
 
     print_complete = pyqtSignal(bool)  # Success/failure
     back_requested = pyqtSignal()
@@ -108,12 +112,11 @@ class PrintWindow(QMainWindow):
             title="Pratinjau & Cetak",
             subtitle="Periksa hasil akhir dan selesaikan sesi",
             prev_text="← Kembali ke Edit Foto",
-            next_text="Selesaikan Sesi"
+            show_next=False
         )
         self.navigation_header.prev_clicked.connect(self.on_back_clicked)
-        self.navigation_header.next_clicked.connect(self.on_finish_clicked)
         self.back_button = self.navigation_header.prev_button
-        self.finish_button = self.navigation_header.next_button
+        self.finish_button = None
         root_layout.addWidget(self.navigation_header)
 
         # Main layout - use horizontal layout for better space utilization
@@ -131,10 +134,6 @@ class PrintWindow(QMainWindow):
         right_layout = QVBoxLayout()
         right_layout.setSpacing(10)
 
-        # Settings section
-        settings_section = self.create_settings_section()
-        right_layout.addWidget(settings_section)
-
         # Status section
         status_section = self.create_status_section()
         right_layout.addWidget(status_section)
@@ -143,12 +142,20 @@ class PrintWindow(QMainWindow):
         button_section = self.create_button_section()
         right_layout.addWidget(button_section)
 
+        # Settings section
+        settings_section = self.create_settings_section()
+        right_layout.addWidget(settings_section)
+
         # Add layouts to main layout
         main_layout.addLayout(left_layout, 60)  # 60% width for preview
         main_layout.addLayout(right_layout, 40)  # 40% width for controls
 
         # Apply styling
         self.apply_style()
+
+    def get_copy_count(self):
+        """Return fixed copy count since salinan panel has been removed."""
+        return 1
 
     def create_preview_section(self):
         """Create print preview section - portrait orientation like ID card"""
@@ -181,8 +188,10 @@ class PrintWindow(QMainWindow):
 
         # Preview label - portrait orientation for ID card
         self.preview_label = QLabel()
-        self.preview_label.setMinimumSize(540, 720)
-        self.preview_label.setMaximumSize(540, 720)
+        self.preview_label.setFixedSize(
+            self.PREVIEW_TARGET_WIDTH,
+            self.PREVIEW_TARGET_HEIGHT
+        )
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.preview_label.setStyleSheet("""
             QLabel {
@@ -195,18 +204,6 @@ class PrintWindow(QMainWindow):
         preview_container_layout.addWidget(self.preview_label)
 
         layout.addWidget(preview_container)
-
-        # Preview info
-        self.preview_info = QLabel()
-        self.preview_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.preview_info.setStyleSheet("""
-            QLabel {
-                font-size: 11px;
-                color: #7f8c8d;
-                margin-top: 5px;
-            }
-        """)
-        layout.addWidget(self.preview_info)
 
         return frame
 
@@ -234,15 +231,6 @@ class PrintWindow(QMainWindow):
         # Printer selection group
         printer_group = self.create_printer_group()
         layout.addWidget(printer_group)
-
-        # Copy settings group
-        copy_group = self.create_copy_group()
-        layout.addWidget(copy_group)
-
-        # Refresh button
-        refresh_btn = QPushButton("🔄 Segarkan Printer")
-        refresh_btn.clicked.connect(self.refresh_printers)
-        layout.addWidget(refresh_btn)
 
         layout.addStretch()
 
@@ -290,27 +278,6 @@ class PrintWindow(QMainWindow):
 
         return group
 
-    def create_copy_group(self):
-        """Create copy settings group - compact"""
-        group = QGroupBox("Salinan")
-        layout = QGridLayout(group)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(5)
-
-        # Number of copies
-        copies_label = QLabel("Salinan:")
-        copies_label.setStyleSheet("QLabel { color: #2c3e50; font-weight: bold; font-size: 11px; }")
-        layout.addWidget(copies_label, 0, 0)
-        self.copies_spin = QSpinBox()
-        self.copies_spin.setRange(1, 20)
-        self.copies_spin.setValue(1)
-        self.copies_spin.setMaximumHeight(25)
-        self.copies_spin.valueChanged.connect(self.update_preview)
-        layout.addWidget(self.copies_spin, 0, 1)
-
-        return group
-
-
     def create_status_section(self):
         """Create status section - compact"""
         frame = QFrame()
@@ -345,22 +312,27 @@ class PrintWindow(QMainWindow):
         layout.setContentsMargins(5, 5, 5, 5)
         layout.setSpacing(8)
 
-        # All buttons in a single row for compactness
-        button_row = QHBoxLayout()
-
-        # Save button
+        # Horizontal button row (flex-like)
         self.save_button = QPushButton("💾 Simpan")
-        self.save_button.setMinimumHeight(40)
+        self.save_button.setMinimumHeight(45)
+        self.save_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.save_button.clicked.connect(self.save_id_card)
 
-        # Print button
         self.print_button = QPushButton("🖨️ Cetak")
-        self.print_button.setMinimumHeight(40)
+        self.print_button.setMinimumHeight(45)
+        self.print_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.print_button.clicked.connect(self.print_id_card)
 
+        self.finish_button = QPushButton("✅️ Selesaikan Sesi")
+        self.finish_button.setMinimumHeight(45)
+        self.finish_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.finish_button.clicked.connect(self.on_finish_clicked)
+
+        button_row = QHBoxLayout()
+        button_row.setSpacing(12)
         button_row.addWidget(self.save_button)
         button_row.addWidget(self.print_button)
-        button_row.addStretch()
+        button_row.addWidget(self.finish_button)
 
         layout.addLayout(button_row)
 
@@ -410,7 +382,7 @@ class PrintWindow(QMainWindow):
             return
 
         try:
-            copies = self.copies_spin.value()
+            copies = self.get_copy_count()
 
             # Create print preview
             preview_image = self.print_manager.create_print_preview(
@@ -420,14 +392,6 @@ class PrintWindow(QMainWindow):
             # Display preview
             self.display_preview(preview_image)
 
-            # Update info
-            width, height = self.id_card_image.size
-            self.preview_info.setText(
-                f"Ukuran ID Card: {width}x{height} piksel\n"
-                f"Salinan Cetak: {copies}\n"
-                f"Estimated Size: {PRINT_SETTINGS['id_card_size'][0]:.1f} x {PRINT_SETTINGS['id_card_size'][1]:.1f} mm"
-            )
-
         except Exception as e:
             print(f"Error updating preview: {e}")
             self.preview_label.setText("Kesalahan memperbarui\npratinjau")
@@ -436,9 +400,12 @@ class PrintWindow(QMainWindow):
         """Display preview image with correct aspect ratio (object-fit: contain behavior) - portrait orientation"""
         try:
             # Calculate the maximum size that fits within the portrait preview area
-            # The preview label is set to 540x720, account for padding
-            max_width = 540 - 30  # 510px
-            max_height = 720 - 30  # 690px
+            width_hint = self.preview_label.width() or self.PREVIEW_TARGET_WIDTH
+            height_hint = self.preview_label.height() or self.PREVIEW_TARGET_HEIGHT
+            usable_width = max(width_hint - self.PREVIEW_PADDING, 100)
+            usable_height = max(height_hint - self.PREVIEW_PADDING, 100)
+            max_width = int(usable_width * self.PREVIEW_SCALE_FACTOR)
+            max_height = int(usable_height * self.PREVIEW_SCALE_FACTOR)
 
             # Get original image dimensions
             orig_width, orig_height = image.size
@@ -487,9 +454,6 @@ class PrintWindow(QMainWindow):
 
         # Update printer info display
         self.update_printer_info_display()
-
-        # Set default values from config
-        self.copies_spin.setValue(1)
 
     def auto_select_printer_from_database(self):
         """Auto-select printer from database configuration"""
@@ -578,18 +542,6 @@ class PrintWindow(QMainWindow):
             self.printer_error_label.setText(f"Kesalahan memvalidasi printer: {str(e)}")
             self.printer_error_label.show()
 
-    def refresh_printers(self):
-        """Refresh printer detection and re-validate database printer"""
-        # Force printer re-detection
-        self.print_manager.available_printers = self.print_manager.get_system_printers()
-        printers = self.print_manager.get_available_printers()
-
-        print(f"UI: Refreshing printers, found {len(printers)}")
-
-        # Re-validate printer from database
-        self.auto_select_printer_from_database()
-        self.update_printer_info_display()
-
     def print_id_card(self):
         """Print ID card"""
         if not self.id_card_image:
@@ -610,7 +562,7 @@ class PrintWindow(QMainWindow):
             self.status_label.setText("Printer yang dikonfigurasi tidak tersedia")
             return
 
-        copies = self.copies_spin.value()
+        copies = self.get_copy_count()
 
         # Disable print button and show progress
         self.print_button.setEnabled(False)
@@ -680,7 +632,6 @@ class PrintWindow(QMainWindow):
                 font-weight: bold;
                 font-size: 14px;
                 border: none;
-                border-radius: 25px;
                 padding: 15px 25px;
             }
             QPushButton:hover {
