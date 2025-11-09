@@ -12,14 +12,13 @@ from datetime import datetime, timedelta
 from ui.components.header_section import HeaderSection
 from ui.components.user_info_section import UserInfoSection
 from ui.components.action_section import ActionSection
-from ui.components.footer_section import FooterSection
 
 # Import dialogs
 from ui.dialogs.custom_dialog import CustomStyledDialog
 from ui.dialogs.request_dialog import RequestDialog
 
 # Import utilities
-from utils.datetime_utils import parse_datetime, days_since
+from utils.datetime_utils import parse_datetime
 from modules.session_manager import session_manager
 from modules.database import db_manager
 
@@ -39,7 +38,6 @@ class DashboardWindow(QMainWindow):
         # Initialize components
         self.user_info_section = UserInfoSection()
         self.action_section = ActionSection()
-        self.footer_section = FooterSection()
 
         self.init_ui()
 
@@ -71,12 +69,6 @@ class DashboardWindow(QMainWindow):
         # Main content section
         content_section = self.create_content_section()
         main_layout.addWidget(content_section)
-
-        # Footer section
-        footer_section = self.footer_section.create(self)
-        if self.footer_section.logout_btn:
-            self.footer_section.logout_btn.hide()
-        main_layout.addWidget(footer_section)
 
         # Connect signals
         self.connect_signals()
@@ -117,35 +109,61 @@ class DashboardWindow(QMainWindow):
         if not layout:
             return
 
-        welcome_label = header_section.findChild(QLabel, "WelcomeTitleLabel")
-        subtitle_label = header_section.findChild(QLabel, "SubtitleLabel")
-
-        if welcome_label:
-            layout.removeWidget(welcome_label)
-        if subtitle_label:
-            layout.removeWidget(subtitle_label)
+        def clear_layout(target_layout):
+            while target_layout.count():
+                item = target_layout.takeAt(0)
+                widget = item.widget()
+                child_layout = item.layout()
+                if widget:
+                    widget.setParent(None)
+                elif child_layout:
+                    clear_layout(child_layout)
 
         self.ensure_header_buttons()
+        clear_layout(layout)
 
-        button_row = QHBoxLayout()
-        button_row.setContentsMargins(0, 0, 0, 10)
-        button_row.setSpacing(30)
+        header_row = QHBoxLayout()
+        header_row.setContentsMargins(0, 0, 0, 10)
+        header_row.setSpacing(30)
 
+        left_container = QWidget()
+        left_layout = QHBoxLayout(left_container)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(0)
         if self.top_logout_btn:
-            button_row.addWidget(self.top_logout_btn, 0, Qt.AlignmentFlag.AlignLeft)
-        button_row.addStretch()
-        if welcome_label:
-            welcome_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            button_row.addWidget(welcome_label, 0, Qt.AlignmentFlag.AlignCenter)
-        button_row.addStretch()
+            left_layout.addWidget(self.top_logout_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        left_layout.addStretch()
+        header_row.addWidget(left_container, 0)
+
+        center_widget = QWidget()
+        center_layout = QVBoxLayout(center_widget)
+        center_layout.setContentsMargins(0, 0, 0, 0)
+        center_layout.setSpacing(4)
+
+        welcome_label = QLabel("Selamat Datang di ID Card Photo Machine")
+        welcome_label.setObjectName("WelcomeTitleLabel")
+        welcome_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        welcome_label.setFont(QFont("Helvetica", 28, QFont.Weight.Bold))
+        welcome_label.setStyleSheet("""
+            QLabel {
+                color: #E60012;
+                margin-bottom: 6px;
+            }
+        """)
+
+        center_layout.addWidget(welcome_label, 0, Qt.AlignmentFlag.AlignCenter)
+        header_row.addWidget(center_widget, 1)
+
+        right_container = QWidget()
+        right_layout = QHBoxLayout(right_container)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(0)
+        right_layout.addStretch()
         if self.top_start_btn:
-            button_row.addWidget(self.top_start_btn, 0, Qt.AlignmentFlag.AlignRight)
+            right_layout.addWidget(self.top_start_btn, 0, Qt.AlignmentFlag.AlignRight)
+        header_row.addWidget(right_container, 0)
 
-        layout.insertLayout(0, button_row)
-
-        if subtitle_label:
-            subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            layout.insertWidget(1, subtitle_label)
+        layout.addLayout(header_row)
 
     def ensure_header_buttons(self):
         """Create styled header buttons if not already created"""
@@ -197,14 +215,6 @@ class DashboardWindow(QMainWindow):
             self.top_start_btn.clicked.connect(self.start_photo_capture_clicked)
         if self.top_logout_btn:
             self.top_logout_btn.clicked.connect(self.logout)
-
-        if self.action_section.start_photo_btn:
-            self.action_section.start_photo_btn.clicked.connect(self.start_photo_capture_clicked)
-        if self.action_section.instructions_btn:
-            self.action_section.instructions_btn.clicked.connect(self.show_instructions)
-
-        if self.footer_section.logout_btn:
-            self.footer_section.logout_btn.clicked.connect(self.logout)
 
     def set_session_info(self, user_data):
         """Set user session information"""
@@ -276,40 +286,6 @@ class DashboardWindow(QMainWindow):
                 "Permintaan Anda telah dikirim ke admin untuk ditinjau."
             )
             confirm_dialog.exec()
-
-    def show_instructions(self):
-        """Show instructions dialog"""
-        instructions = """
-        <h3>Petunjuk Penggunaan ID Card Photo Machine</h3>
-        <p><b>Langkah-langkah:</b></p>
-        <ol>
-        <li>Klik tombol "Mulai Pengambilan Foto"</li>
-        <li>Pilih kamera yang akan digunakan</li>
-        <li>Atur jumlah foto dan delay sesuai kebutuhan</li>
-        <li>Posisikan diri di depan kamera</li>
-        <li>Klik "Ambil Foto" untuk memulai pengambilan</li>
-        <li>Ikuti instruksi countdown yang muncul</li>
-        <li>Pilih foto terbaik dari hasil pengambilan</li>
-        <li>Proses foto menjadi ID card</li>
-        <li>Cetak ID card</li>
-        </ol>
-
-        <p><b>Tips:</b></p>
-        <ul>
-        <li>Pastikan pencahayaan cukup</li>
-        <li>Posisikan wajah di tengah frame</li>
-        <li>Jangan bergerak saat countdown</li>
-        <li>Gunakan background putih</li>
-        </ul>
-        """
-
-        dialog = CustomStyledDialog(
-            self,
-            "Petunjuk Penggunaan",
-            instructions,
-            rich_text=True
-        )
-        dialog.exec()
 
     def logout(self):
         """Handle logout request"""
