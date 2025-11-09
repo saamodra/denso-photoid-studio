@@ -30,7 +30,7 @@ def parse_args():
     )
     parser.add_argument(
         "window",
-        choices=["processing", "print", "selection", "main", "admin", "camera"],
+        choices=["processing", "print", "selection", "main", "admin", "camera", "dashboard"],
         help="Jenis jendela yang ingin diuji.",
     )
     parser.add_argument(
@@ -183,6 +183,17 @@ def test_admin():
     window.show()
     return app.exec()
 
+def test_dashboard(args):
+    """Quick test of dashboard window"""
+    from ui.dashboard_window import DashboardWindow
+
+    app = QApplication(sys.argv)
+    set_test_session(args)
+    window = DashboardWindow()
+    window.set_session_info(session_manager.get_current_user())
+    window.show()
+    return app.exec()
+
 
 class MockCameraManager(CameraManager):
     """Kamera tiruan agar CameraWindow dapat diuji tanpa perangkat keras."""
@@ -330,3 +341,5 @@ if __name__ == "__main__":
         test_admin()
     elif args.window == "camera":
         test_camera(args)
+    elif args.window == "dashboard":
+        test_dashboard(args)
