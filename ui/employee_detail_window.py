@@ -2,7 +2,7 @@ import sys
 import os
 from PyQt6.QtWidgets import (QApplication, QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, 
                              QLabel, QPushButton, QFrame, QGroupBox, QFormLayout,
-                             QMessageBox)
+                             QMessageBox, QSizePolicy)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QPixmap
 
@@ -39,6 +39,87 @@ class EmployeeDetailPage(QDialog):
         self.apply_styles()
         self.load_data()
 
+    # def init_ui(self):
+    #     """Inisialisasi semua komponen UI."""
+    #     main_layout = QVBoxLayout(self)
+    #     main_layout.setContentsMargins(20, 20, 20, 20)
+        
+    #     content_layout = QHBoxLayout()
+        
+    #     # --- Kolom Kiri: Detail Data Karyawan ---
+    #     details_groupbox = QGroupBox("Data Karyawan")
+    #     details_form_layout = QFormLayout()
+    #     details_form_layout.setSpacing(15)
+    #     details_form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+    #     # Siapkan label untuk setiap field data
+    #     self.labels = {
+    #         "npk": QLabel("..."), "name": QLabel("..."), "password": QLabel("..."),
+    #         "role": QLabel("..."), "section_id": QLabel("..."), "section_name": QLabel("..."),
+    #         "department_id": QLabel("..."), "department_name": QLabel("..."),
+    #         "company": QLabel("..."), "plant": QLabel("..."), "last_access": QLabel("..."),
+    #         "last_take_photo": QLabel("..."), "photo_filename": QLabel("..."),
+    #         "card_filename": QLabel("...")
+    #     }
+        
+    #     # Tambahkan baris ke form layout
+    #     details_form_layout.addRow("<b>NPK:</b>", self.labels["npk"])
+    #     details_form_layout.addRow("<b>Nama:</b>", self.labels["name"])
+    #     details_form_layout.addRow("<b>Role:</b>", self.labels["role"])
+    #     details_form_layout.addRow("<b>Password:</b>", self.labels["password"])
+    #     details_form_layout.addRow(QLabel()) # Separator
+    #     details_form_layout.addRow("<b>Seksi:</b>", self.labels["section_name"])
+    #     details_form_layout.addRow("<b>Departemen:</b>", self.labels["department_name"])
+    #     details_form_layout.addRow("<b>Perusahaan:</b>", self.labels["company"])
+    #     details_form_layout.addRow("<b>Plant:</b>", self.labels["plant"])
+    #     details_form_layout.addRow(QLabel()) # Separator
+    #     details_form_layout.addRow("<b>Akses Terakhir:</b>", self.labels["last_access"])
+    #     details_form_layout.addRow("<b>Pengambilan Foto Terakhir:</b>", self.labels["last_take_photo"])
+    #     details_form_layout.addRow("<b>File Foto:</b>", self.labels["photo_filename"])
+    #     details_form_layout.addRow("<b>File Kartu:</b>", self.labels["card_filename"])
+
+    #     details_groupbox.setLayout(details_form_layout)
+
+    #     # --- Kolom Kanan: Pratinjau Foto ---
+    #     photos_layout = QVBoxLayout()
+        
+    #     original_photo_groupbox = QGroupBox("Preview Foto Original")
+    #     original_photo_layout = QVBoxLayout()
+    #     self.original_photo_label = QLabel("Foto tidak ditemukan")
+    #     self.original_photo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #     self.original_photo_label.setMinimumSize(300, 300)
+    #     original_photo_layout.addWidget(self.original_photo_label)
+    #     original_photo_groupbox.setLayout(original_photo_layout)
+
+    #     card_photo_groupbox = QGroupBox("Preview Kartu ID")
+    #     card_photo_layout = QVBoxLayout()
+    #     self.card_photo_label = QLabel("Kartu ID tidak ditemukan")
+    #     self.card_photo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #     self.card_photo_label.setMinimumSize(300, 300)
+    #     card_photo_layout.addWidget(self.card_photo_label)
+    #     card_photo_groupbox.setLayout(card_photo_layout)
+        
+    #     photos_layout.addWidget(original_photo_groupbox)
+    #     photos_layout.addWidget(card_photo_groupbox)
+
+    #     content_layout.addWidget(details_groupbox, 60) # 60% width
+    #     content_layout.addLayout(photos_layout, 40)    # 40% width
+
+    #     # --- Footer: Tombol Aksi ---
+    #     footer_layout = QHBoxLayout()
+    #     footer_layout.addStretch()
+    #     self.back_button = QPushButton("Kembali")
+    #     self.back_button.setObjectName("BackButton")
+    #     self.back_button.clicked.connect(self.accept) # Menutup dialog
+
+    #     self.print_button = QPushButton("🖨️ Print ID Card")
+    #     self.print_button.clicked.connect(self.print_card_action)
+        
+    #     footer_layout.addWidget(self.back_button)
+    #     footer_layout.addWidget(self.print_button)
+        
+    #     main_layout.addLayout(content_layout)
+    #     main_layout.addLayout(footer_layout)
     def init_ui(self):
         """Inisialisasi semua komponen UI."""
         main_layout = QVBoxLayout(self)
@@ -46,13 +127,12 @@ class EmployeeDetailPage(QDialog):
         
         content_layout = QHBoxLayout()
         
-        # --- Kolom Kiri: Detail Data Karyawan ---
+        # --- Kolom Kiri: Detail Data Karyawan (Tidak Berubah) ---
         details_groupbox = QGroupBox("Data Karyawan")
         details_form_layout = QFormLayout()
         details_form_layout.setSpacing(15)
         details_form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
-        # Siapkan label untuk setiap field data
         self.labels = {
             "npk": QLabel("..."), "name": QLabel("..."), "password": QLabel("..."),
             "role": QLabel("..."), "section_id": QLabel("..."), "section_name": QLabel("..."),
@@ -62,7 +142,6 @@ class EmployeeDetailPage(QDialog):
             "card_filename": QLabel("...")
         }
         
-        # Tambahkan baris ke form layout
         details_form_layout.addRow("<b>NPK:</b>", self.labels["npk"])
         details_form_layout.addRow("<b>Nama:</b>", self.labels["name"])
         details_form_layout.addRow("<b>Role:</b>", self.labels["role"])
@@ -80,32 +159,42 @@ class EmployeeDetailPage(QDialog):
 
         details_groupbox.setLayout(details_form_layout)
 
-        # --- Kolom Kanan: Pratinjau Foto ---
-        photos_layout = QVBoxLayout()
+        # --- Kolom Kanan: Pratinjau Foto dan Tombol ---
+        # Tata letak vertikal baru untuk kolom kanan
+        right_column_layout = QVBoxLayout()
+
+        # Layout horizontal BARU untuk menampung DUA pratinjau berdampingan
+        previews_layout = QHBoxLayout()
         
+        # Pratinjau Foto Original
         original_photo_groupbox = QGroupBox("Preview Foto Original")
         original_photo_layout = QVBoxLayout()
         self.original_photo_label = QLabel("Foto tidak ditemukan")
         self.original_photo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.original_photo_label.setMinimumSize(300, 300)
+        # Mengubah ukuran agar lebih sesuai dengan rasio potret seperti di gambar
+        self.original_photo_label.setMinimumSize(360, 480) 
+        self.original_photo_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         original_photo_layout.addWidget(self.original_photo_label)
         original_photo_groupbox.setLayout(original_photo_layout)
+        original_photo_groupbox.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
+        # Pratinjau Kartu ID
         card_photo_groupbox = QGroupBox("Preview Kartu ID")
         card_photo_layout = QVBoxLayout()
         self.card_photo_label = QLabel("Kartu ID tidak ditemukan")
         self.card_photo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.card_photo_label.setMinimumSize(300, 300)
+        # Mengubah ukuran agar lebih sesuai dengan rasio potret
+        self.card_photo_label.setMinimumSize(360, 480)
+        self.card_photo_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         card_photo_layout.addWidget(self.card_photo_label)
         card_photo_groupbox.setLayout(card_photo_layout)
+        card_photo_groupbox.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         
-        photos_layout.addWidget(original_photo_groupbox)
-        photos_layout.addWidget(card_photo_groupbox)
-
-        content_layout.addWidget(details_groupbox, 60) # 60% width
-        content_layout.addLayout(photos_layout, 40)    # 40% width
-
-        # --- Footer: Tombol Aksi ---
+        # Tambahkan kedua groupbox pratinjau ke layout horizontal
+        previews_layout.addWidget(original_photo_groupbox)
+        previews_layout.addWidget(card_photo_groupbox)
+        
+        # --- Tombol Aksi (Dipindahkan) ---
         footer_layout = QHBoxLayout()
         footer_layout.addStretch()
         self.back_button = QPushButton("Kembali")
@@ -118,8 +207,17 @@ class EmployeeDetailPage(QDialog):
         footer_layout.addWidget(self.back_button)
         footer_layout.addWidget(self.print_button)
         
+        # Tambahkan layout pratinjau (horizontal) dan layout tombol (horizontal)
+        # ke dalam tata letak kolom kanan (vertikal)
+        right_column_layout.addLayout(previews_layout)
+        right_column_layout.addLayout(footer_layout)
+
+        # --- Selesaikan Layout Utama ---
+        content_layout.addWidget(details_groupbox, 50) # Beri 50% untuk data
+        content_layout.addLayout(right_column_layout, 50) # Beri 50% untuk pratinjau & tombol
+        
+        # Hapus penambahan footer_layout di sini karena sudah dipindah
         main_layout.addLayout(content_layout)
-        main_layout.addLayout(footer_layout)
 
     def apply_styles(self):
         """Menerapkan styling ke seluruh widget dialog."""

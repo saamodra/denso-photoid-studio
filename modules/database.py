@@ -62,11 +62,49 @@ class DatabaseManager:
                     logger.info("Creating database tables...")
                     self.create_tables(conn)
                     logger.info("Database tables created successfully")
+
+                    self.init_user_admin()
                 else:
                     logger.info("Database tables already exist")
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
             raise
+
+    def init_user_admin(self):
+        user_data = {
+            'npk': 'ADMIN001',
+            'name': 'Administrator',
+            'role': 'admin',
+            'section_id': '-',
+            'section_name': '-',
+            'department_id': '-',
+            'department_name': '-',
+            'company': 'PT Denso Indonesia',
+            'plant': '-',
+            'password': '@Admin2025'  # This will be encrypted
+        }
+
+        print("Creating sample users with encrypted passwords...")
+        created_count = 0
+        try:
+            # Extract password before creating user
+            password = user_data.pop('password')
+
+            # Create user with encrypted password
+            success = self.create_user_with_password(user_data, password)
+
+            if success:
+                print(f"✓ Created user: {user_data['name']} (NPK: {user_data['npk']})")
+                created_count += 1
+            else:
+                print(f"✗ Failed to create user: {user_data['name']} (NPK: {user_data['npk']})")
+
+        except Exception as e:
+            print(f"✗ Error creating user {user_data.get('name', 'Unknown')}: {e}")
+
+        if created_count > 0:
+            print(f"\nSample login credentials:")
+            print(f"Admin: NPK={user_data['npk']}, Password={user_data['password']}")
 
     def create_tables(self, conn: sqlite3.Connection):
         """Create all database tables"""

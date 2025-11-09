@@ -153,7 +153,7 @@ class EmployeeListPage(QWidget):
         # --- Search Bar ---
         search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Cari berdasarkan NPK atau Nama...")
+        self.search_input.setPlaceholderText("Cari data...")
         self.search_input.textChanged.connect(self.perform_search)
         search_layout.addWidget(self.search_input)
 
@@ -437,7 +437,14 @@ class EmployeeListPage(QWidget):
             self.displayed_employees = [
                 emp for emp in self.all_employees
                 if search_text in emp.get("npk", "").lower() or \
-                   search_text in emp.get("name", "").lower()
+                    search_text in emp.get("name", "").lower() or \
+                    # search_text in emp.get("role", "").lower() or \
+                    # search_text in emp.get("section_id", "").lower() or \
+                    search_text in emp.get("section_name", "").lower() or \
+                    # search_text in emp.get("department_id", "").lower() or \
+                    search_text in emp.get("department_name", "").lower() or \
+                    search_text in emp.get("company", "").lower() or \
+                    search_text in emp.get("plant", "").lower()
             ]
         self.current_page = 1
         self.refresh_table()
