@@ -188,11 +188,12 @@ class MockCameraManager(CameraManager):
     """Kamera tiruan agar CameraWindow dapat diuji tanpa perangkat keras."""
 
     def __init__(self, fps: int = 15):
+        self._preview_resolution = self._get_portrait_preview_size()
         self._mock_cameras = [{
             "index": 0,
             "backend": None,
             "name": "Mock Camera",
-            "resolution": UI_SETTINGS["camera_preview_size"],
+            "resolution": self._preview_resolution,
         }]
         self._fps = max(1, fps)
         self._preview_timer: QTimer | None = None
@@ -249,7 +250,7 @@ class MockCameraManager(CameraManager):
 
     def _generate_frame(self):
         """Hasilkan frame BGR dengan animasi sederhana."""
-        width, height = UI_SETTINGS["camera_preview_size"]
+        width, height = self._preview_resolution
         frame = np.zeros((height, width, 3), dtype=np.uint8)
 
         gradient = np.linspace(50, 180, width, dtype=np.uint8)
@@ -267,6 +268,14 @@ class MockCameraManager(CameraManager):
         cv2.putText(frame, f"Waktu: {timestamp}", (40, height - 60), cv2.FONT_HERSHEY_SIMPLEX,
                     1.0, (230, 230, 230), 2, cv2.LINE_AA)
         return frame
+
+    @staticmethod
+    def _get_portrait_preview_size():
+        """Gunakan resolusi portrait agar sesuai dengan kamera sebenarnya."""
+        width, height = UI_SETTINGS["camera_preview_size"]
+        if width <= height:
+            return width, height
+        return height, width
 
 
 def ensure_default_camera_config(camera_name: str):

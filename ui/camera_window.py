@@ -4,7 +4,8 @@ Camera preview and capture functionality
 """
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                             QLabel, QPushButton, QComboBox, QGridLayout,
-                            QFrame, QProgressBar, QSpinBox, QGroupBox, QDialog)
+                            QFrame, QProgressBar, QSpinBox, QGroupBox, QDialog,
+                            QSizePolicy)
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QUrl
 from PyQt6.QtMultimedia import QSoundEffect
 from PyQt6.QtGui import QPixmap, QFont, QPalette
@@ -77,6 +78,9 @@ class PhotoCaptureThread(QThread):
 class MainWindow(QMainWindow):
     """Main application window with camera preview and capture"""
 
+    LEFT_COLUMN_WIDTH = 360
+    RIGHT_COLUMN_WIDTH = 420
+
     photos_captured = pyqtSignal(list)  # Signal emitted when photos are captured
     logout_requested = pyqtSignal()  # Signal emitted when logout is requested
     back_to_dashboard_requested = pyqtSignal()  # Signal emitted when user wants to return to dashboard
@@ -138,13 +142,20 @@ class MainWindow(QMainWindow):
         content_layout = QHBoxLayout()
         root_layout.addLayout(content_layout)
 
-        # Camera section (left side)
-        camera_section = self.create_camera_section()
-        content_layout.addWidget(camera_section, 70)  # 70% width
+        # Left column hosts navigation button to balance layout
+        left_section = self.create_left_section()
+        left_section.setFixedWidth(self.LEFT_COLUMN_WIDTH)
+        content_layout.addWidget(left_section)
 
-        # Control section (right side)
+        # Camera section (center column)
+        camera_section = self.create_camera_section()
+        camera_section.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        content_layout.addWidget(camera_section)
+
+        # Control section (right column)
         control_section = self.create_control_section()
-        content_layout.addWidget(control_section, 30)  # 30% width
+        control_section.setFixedWidth(self.RIGHT_COLUMN_WIDTH)
+        content_layout.addWidget(control_section)
 
         # Set style
         self.apply_modern_style()
@@ -297,7 +308,6 @@ class MainWindow(QMainWindow):
         self.camera_container.setStyleSheet("""
             QFrame {
                 background-color: #2c3e50;
-                border: 2px solid #34495e;
                 border-radius: 10px;
             }
         """)
@@ -325,11 +335,11 @@ class MainWindow(QMainWindow):
         # Countdown overlay (positioned absolutely over camera)
         self.countdown_label = QLabel()
         self.countdown_label.setParent(self.camera_container)
+        self.countdown_label.setTextFormat(Qt.TextFormat.RichText)
         self.countdown_label.setStyleSheet("""
             QLabel {
                 background-color: rgba(0, 0, 0, 150);
                 color: white;
-                font-size: 72px;
                 font-weight: bold;
                 border-radius: 10px;
                 text-align: center;
@@ -341,11 +351,11 @@ class MainWindow(QMainWindow):
         # Capture overlay (positioned absolutely over camera)
         self.capture_overlay = QLabel()
         self.capture_overlay.setParent(self.camera_container)
+        self.capture_overlay.setTextFormat(Qt.TextFormat.RichText)
         self.capture_overlay.setStyleSheet("""
             QLabel {
                 background-color: rgba(255, 255, 255, 200);
                 color: #2c3e50;
-                font-size: 72px;
                 font-weight: bold;
                 border-radius: 10px;
                 text-align: center;
@@ -357,11 +367,11 @@ class MainWindow(QMainWindow):
         # Delay countdown overlay (positioned absolutely over camera)
         self.delay_overlay = QLabel()
         self.delay_overlay.setParent(self.camera_container)
+        self.delay_overlay.setTextFormat(Qt.TextFormat.RichText)
         self.delay_overlay.setStyleSheet("""
             QLabel {
                 background-color: rgba(0, 0, 0, 150);
                 color: white;
-                font-size: 72px;
                 font-weight: bold;
                 border-radius: 10px;
                 text-align: center;
@@ -375,9 +385,10 @@ class MainWindow(QMainWindow):
         self.capture_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
         self.delay_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
 
-        # Action buttons (back + capture) placed above camera preview
+        # Capture button row
         button_row = QHBoxLayout()
-        button_row.setSpacing(12)
+        button_row.setContentsMargins(0, 0, 0, 0)
+        button_row.setSpacing(0)
 
         button_style = """
             QPushButton {
@@ -400,17 +411,12 @@ class MainWindow(QMainWindow):
             }
         """
 
-        self.back_to_dashboard_button = QPushButton("← Kembali")
-        self.back_to_dashboard_button.setMinimumHeight(60)
-        self.back_to_dashboard_button.setStyleSheet(button_style)
-        self.back_to_dashboard_button.clicked.connect(self.cancel_capture_session)
-        button_row.addWidget(self.back_to_dashboard_button)
-
-        self.capture_button = QPushButton("📸 Mulai Ambil Foto")
+        self.capture_button = QPushButton("📷 Ambil Foto")
         self.capture_button.setMinimumHeight(60)
+        self.capture_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.capture_button.setStyleSheet(button_style)
         self.capture_button.clicked.connect(self.start_photo_capture)
-        button_row.addWidget(self.capture_button, 1)
+        button_row.addWidget(self.capture_button)
 
         layout.addLayout(button_row)
         layout.addWidget(self.camera_container)
@@ -452,6 +458,47 @@ class MainWindow(QMainWindow):
         layout.addStretch()
 
         return control_frame
+
+    def create_left_section(self):
+        """Create left-side container hosting only the back button."""
+        left_frame = QFrame()
+        left_frame.setFrameStyle(QFrame.Shape.StyledPanel)
+
+        layout = QVBoxLayout(left_frame)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(0)
+
+        button_style = """
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                font-size: 18px;
+                font-weight: bold;
+                border: none;
+                border-radius: 30px;
+                padding: 15px;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+            QPushButton:pressed {
+                background-color: #21618c;
+            }
+            QPushButton:disabled {
+                background-color: #95a5a6;
+            }
+        """
+
+        self.back_to_dashboard_button = QPushButton("← Kembali")
+        self.back_to_dashboard_button.setMinimumHeight(60)
+        self.back_to_dashboard_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.back_to_dashboard_button.setStyleSheet(button_style)
+        self.back_to_dashboard_button.clicked.connect(self.cancel_capture_session)
+        layout.addWidget(self.back_to_dashboard_button)
+
+        layout.addStretch()
+        return left_frame
+
 
     def create_user_info_group(self):
         """Create user information display group"""
@@ -829,7 +876,13 @@ class MainWindow(QMainWindow):
         """Update countdown display"""
         # Show countdown overlay
         self._play_tick_sound()
-        self.countdown_label.setText(str(count))
+        self.countdown_label.setText((
+            f"""
+            <div style="text-align:center;">
+                <div style="font-size:120px;font-weight:700;">{count}</div>
+            </div>
+            """
+        ).strip())
         # Position countdown to cover the entire camera container
         self.countdown_label.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
         self.countdown_label.show()
@@ -864,7 +917,6 @@ class MainWindow(QMainWindow):
         self._play_shutter_sound()
 
         # Show capture overlay
-        self.capture_overlay.setText(f"1\n{current}/{total}")
         self.capture_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
         self.capture_overlay.show()
         self.capture_overlay.raise_()
@@ -881,7 +933,14 @@ class MainWindow(QMainWindow):
         """Handle delay countdown between photos"""
         # Show delay overlay
         self._play_tick_sound()
-        self.delay_overlay.setText(f"{remaining}\n{current}/{total}")
+        self.delay_overlay.setText((
+            f"""
+            <div style="text-align:center;">
+                <div style="font-size:110px;font-weight:700;">{remaining}</div>
+                <div style="font-size:64px;font-weight:600;margin-top:8px;">{current}/{total}</div>
+            </div>
+            """
+        ).strip())
         self.delay_overlay.setGeometry(0, 0, self.camera_container.width(), self.camera_container.height())
         self.delay_overlay.show()
         self.delay_overlay.raise_()
