@@ -392,7 +392,7 @@ class MainWindow(QMainWindow):
 
         button_style = """
             QPushButton {
-                background-color: #3498db;
+                background-color: #E60012;
                 color: white;
                 font-size: 18px;
                 font-weight: bold;
@@ -401,7 +401,7 @@ class MainWindow(QMainWindow):
                 padding: 15px;
             }
             QPushButton:hover {
-                background-color: #2980b9;
+                background-color: #2c3e50;
             }
             QPushButton:pressed {
                 background-color: #21618c;
@@ -470,7 +470,7 @@ class MainWindow(QMainWindow):
 
         button_style = """
             QPushButton {
-                background-color: #3498db;
+                background-color: #2c3e50;
                 color: white;
                 font-size: 18px;
                 font-weight: bold;
@@ -867,19 +867,24 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(0)
 
         # Start countdown timer
-        self.capture_timer = CaptureTimer(3)  # 3 second countdown
+        delay_value = self.get_config_value('capture_delay', CAMERA_SETTINGS['capture_delay'])
+        self.capture_timer = CaptureTimer(int(delay_value))  # 3 second countdown
         self.capture_timer.countdown_update.connect(self.update_countdown)
         self.capture_timer.capture_ready.connect(self.capture_photos)
         self.capture_timer.start()
 
     def update_countdown(self, count):
         """Update countdown display"""
+        
         # Show countdown overlay
+        photo_count = self.get_config_value('photo_count', CAMERA_SETTINGS['capture_count'])
+
         self._play_tick_sound()
         self.countdown_label.setText((
             f"""
             <div style="text-align:center;">
                 <div style="font-size:120px;font-weight:700;">{count}</div>
+                <div style="font-size:64px;font-weight:600;margin-top:8px;">1/{str(photo_count)}</div>
             </div>
             """
         ).strip())
@@ -937,7 +942,7 @@ class MainWindow(QMainWindow):
             f"""
             <div style="text-align:center;">
                 <div style="font-size:110px;font-weight:700;">{remaining}</div>
-                <div style="font-size:64px;font-weight:600;margin-top:8px;">{current}/{total}</div>
+                <div style="font-size:64px;font-weight:600;margin-top:8px;">{current + 1}/{total}</div>
             </div>
             """
         ).strip())

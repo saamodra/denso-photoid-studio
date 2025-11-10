@@ -49,8 +49,8 @@ class ActionSection:
         pixmap = QPixmap(INSTRUCTIONS_IMAGE_PATH)
         if not pixmap.isNull():
             scaled = pixmap.scaled(
-                700,
-                1000,
+                1280,
+                720,  # 1280 * 9 / 16
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation
             )

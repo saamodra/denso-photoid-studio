@@ -444,7 +444,9 @@ class EmployeeListPage(QWidget):
                     # search_text in emp.get("department_id", "").lower() or \
                     search_text in emp.get("department_name", "").lower() or \
                     search_text in emp.get("company", "").lower() or \
-                    search_text in emp.get("plant", "").lower()
+                    search_text in emp.get("plant", "").lower() or \
+                    search_text in str(emp.get("status_request", "")).lower()
+                        
             ]
         self.current_page = 1
         self.refresh_table()
