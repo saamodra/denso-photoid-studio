@@ -42,9 +42,17 @@ DATABASE_SETTINGS = {
     'timeout': 30.0
 }
 
+import sys
+
 # File paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ASSETS_DIR = os.path.join(BASE_DIR, 'assets')
+
+# When running under PyInstaller, assets are unpacked under sys._MEIPASS.
+# Point ASSETS_DIR there so resource loading works in packaged builds.
+if hasattr(sys, '_MEIPASS'):
+    ASSETS_DIR = os.path.join(sys._MEIPASS, 'assets')
+else:
+    ASSETS_DIR = os.path.join(BASE_DIR, 'assets')
 BACKGROUNDS_DIR = os.path.join(ASSETS_DIR, 'backgrounds')
 TEMPLATES_DIR = os.path.join(ASSETS_DIR, 'templates')
 ICONS_DIR = os.path.join(ASSETS_DIR, 'icons')

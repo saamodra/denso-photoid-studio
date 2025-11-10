@@ -11,9 +11,11 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QFont, QPixmap
 from PyQt6.QtCore import Qt
+import os
+from config import ASSETS_DIR
 
 
-INSTRUCTIONS_IMAGE_PATH = "assets/petunjuk.jpg"
+INSTRUCTIONS_IMAGE_PATH = os.path.join(ASSETS_DIR, "petunjuk.jpg")
 
 
 class ActionSection:
@@ -56,7 +58,7 @@ class ActionSection:
         else:
             self.instructions_label.setText(
                 "Gambar petunjuk tidak tersedia.\n"
-                "Pastikan berkas assets/petunjuk_dashboard.png ada."
+                "Pastikan berkas assets/petunjuk.jpg ada."
             )
             self.instructions_label.setWordWrap(True)
 

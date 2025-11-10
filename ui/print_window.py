@@ -326,6 +326,7 @@ class PrintWindow(QMainWindow):
         self.finish_button = QPushButton("✅️ Selesaikan Sesi")
         self.finish_button.setMinimumHeight(45)
         self.finish_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.finish_button.setObjectName("finishButton")
         self.finish_button.clicked.connect(self.on_finish_clicked)
 
         button_row = QHBoxLayout()
@@ -681,6 +682,17 @@ class PrintWindow(QMainWindow):
             QProgressBar::chunk {
                 background-color: #27ae60;
                 border-radius: 3px;
+            }
+            /* Primary red finish button */
+            QPushButton#finishButton {
+                background-color: #E60012;
+                color: white;
+            }
+            QPushButton#finishButton:hover {
+                background-color: #cc0010;
+            }
+            QPushButton#finishButton:pressed {
+                background-color: #99000c;
             }
         """)
 
