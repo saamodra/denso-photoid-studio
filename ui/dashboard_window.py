@@ -3,13 +3,12 @@ Dashboard/Welcome Window
 Welcome page for logged-in users with options to start photo capture
 """
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                            QDialog, QLabel, QPushButton)
+                            QDialog, QLabel, QPushButton, QSizePolicy, QFrame)
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 from datetime import datetime, timedelta
 
 # Import components
-from ui.components.header_section import HeaderSection
 from ui.components.user_info_section import UserInfoSection
 from ui.components.action_section import ActionSection
 
@@ -62,8 +61,7 @@ class DashboardWindow(QMainWindow):
         main_layout.setSpacing(20)
 
         # Header section
-        header_section = HeaderSection.create(self)
-        self.setup_header_controls(header_section)
+        header_section = self.create_header_section()
         main_layout.addWidget(header_section)
 
         # Main content section
@@ -103,24 +101,15 @@ class DashboardWindow(QMainWindow):
 
         return content_frame
 
-    def setup_header_controls(self, header_section):
-        """Place logout and start buttons inline with header title"""
-        layout = header_section.layout()
-        if not layout:
-            return
+    def create_header_section(self):
+        """Create header section with logout and start buttons inline with header title"""
+        header_section = QFrame()
+        header_section.setFrameStyle(QFrame.Shape.StyledPanel)
+        header_section.setFixedHeight(180)
 
-        def clear_layout(target_layout):
-            while target_layout.count():
-                item = target_layout.takeAt(0)
-                widget = item.widget()
-                child_layout = item.layout()
-                if widget:
-                    widget.setParent(None)
-                elif child_layout:
-                    clear_layout(child_layout)
+        layout = QVBoxLayout(header_section)
 
         self.ensure_header_buttons()
-        clear_layout(layout)
 
         header_row = QHBoxLayout()
         header_row.setContentsMargins(0, 0, 0, 10)
@@ -165,47 +154,53 @@ class DashboardWindow(QMainWindow):
 
         layout.addLayout(header_row)
 
+        return header_section
+
     def ensure_header_buttons(self):
         """Create styled header buttons if not already created"""
         if not self.top_logout_btn:
             self.top_logout_btn = QPushButton("Keluar")
-            self.top_logout_btn.setMinimumHeight(70)
+            self.top_logout_btn.setFixedHeight(48)
             self.top_logout_btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #3498db;
+                    background-color: #2c3e50;
                     color: #ffffff;
-                    font-size: 22px;
-                    font-weight: bold;
                     border: none;
-                    border-radius: 8px;
-                    padding: 18px 36px;
+                    border-radius: 24px;
+                    padding: 12px 28px;
+                    font-size: 16px;
+                    font-weight: bold;
+                    min-width: 180px;
                 }
                 QPushButton:hover {
-                    background-color: #2980b9;
+                    background-color: #1f2a36;
                 }
-                QPushButton:pressed {
-                    background-color: #21618c;
+                QPushButton:disabled {
+                    background-color: #95a5a6;
                 }
             """)
 
         if not self.top_start_btn:
             self.top_start_btn = QPushButton("Mulai Foto")
-            self.top_start_btn.setMinimumHeight(80)
+            self.top_start_btn.setFixedHeight(48)
+            self.top_start_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
             self.top_start_btn.setStyleSheet("""
                 QPushButton {
                     background-color: #E60012;
                     color: #ffffff;
-                    font-size: 26px;
-                    font-weight: bold;
                     border: none;
-                    border-radius: 8px;
-                    padding: 22px 48px;
+                    border-radius: 24px;
+                    padding: 12px 28px;
+                    font-size: 16px;
+                    font-weight: bold;
+                    min-width: 180px;
                 }
                 QPushButton:hover {
-                    background-color: #CC0010;
+                    background-color: #c2000f;
                 }
-                QPushButton:pressed {
-                    background-color: #99000C;
+                QPushButton:disabled {
+                    background-color: #f5b7b1;
+                    color: #ffffff;
                 }
             """)
 
@@ -399,7 +394,6 @@ class DashboardWindow(QMainWindow):
                 color: white;
                 font-weight: bold;
                 border: none;
-                border-radius: 8px;
                 padding: 10px;
                 min-height: 20px;
             }
