@@ -16,8 +16,8 @@ class UserInfoSection:
 
     def create(self, parent):
         """Create user information section"""
-        group = QGroupBox("Informasi Pengguna")
-        group.setFont(QFont("Helvetica", 14, QFont.Weight.Bold))
+        group = QGroupBox()
+        group.setFont(QFont("Helvetica", 18, QFont.Weight.Bold))
         layout = QVBoxLayout(group)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
@@ -31,18 +31,17 @@ class UserInfoSection:
         # Style the labels
         user_style = """
             QLabel {
-                font-size: 14px;
+                font-size: 24px;
                 color: #2c3e50;
                 margin: 5px 0px;
                 padding: 5px;
-                background-color: #f8f9fa;
                 border-radius: 5px;
             }
         """
 
         self.user_name_label.setStyleSheet(user_style + """
             QLabel {
-                font-size: 18px;
+                font-size: 24px;
                 font-weight: bold;
                 color: #E60012;
                 background-color: #fff5f5;

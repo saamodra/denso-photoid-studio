@@ -61,14 +61,14 @@ class CustomStyledDialog(QDialog):
             QLabel {
                 background-color: #FFFFFF;
                 color: #333333;
-                font-size: 14px;
+                font-size: 16px;
                 padding: 10px;
             }
             QPushButton {
                 background-color: #E60012;
                 color: #FFFFFF;
                 font-weight: bold;
-                font-size: 14px;
+                font-size: 16px;
                 border: none;
                 border-radius: 8px;
                 padding: 10px 20px;
@@ -145,7 +145,7 @@ class SettingsDialog(QDialog):
 
         refresh_camera_btn = QPushButton("🔄 Refresh")
         refresh_camera_btn.setObjectName("RefreshButton")
-        refresh_camera_btn.setMaximumWidth(80)
+        # refresh_camera_btn.setMaximumWidth(80)
         refresh_camera_btn.clicked.connect(self.refresh_cameras)
 
         camera_selection_layout.addWidget(self.camera_combo, 1)
@@ -188,7 +188,7 @@ class SettingsDialog(QDialog):
 
         refresh_printer_btn = QPushButton("🔄 Refresh")
         refresh_printer_btn.setObjectName("RefreshButton")
-        refresh_printer_btn.setMaximumWidth(80)
+        # refresh_printer_btn.setMaximumWidth(80)
         refresh_printer_btn.clicked.connect(self.refresh_printers)
 
         printer_selection_layout.addWidget(self.printer_combo, 1)
@@ -541,20 +541,20 @@ class SettingsDialog(QDialog):
         #SettingLabel {
             color: #E60012;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 16px;
             margin-bottom: 8px;
         }
 
         #FieldLabel {
             color: #333333;
             font-weight: 600;
-            font-size: 13px;
+            font-size: 15px;
         }
 
         #PreviewLabel {
             color: #E60012;
             font-weight: bold;
-            font-size: 13px;
+            font-size: 15px;
         }
 
         #CameraPreviewFrame {
@@ -569,7 +569,7 @@ class SettingsDialog(QDialog):
             border: 2px dashed #E60012;
             border-radius: 12px;
             color: #333333;
-            font-size: 13px;
+            font-size: 15px;
             padding: 16px;
         }
 
@@ -579,7 +579,7 @@ class SettingsDialog(QDialog):
             border-radius: 6px;
             background-color: #FFFFFF;
             color: #333333;
-            font-size: 14px;
+            font-size: 16px;
             min-height: 20px;
         }
 
@@ -592,7 +592,7 @@ class SettingsDialog(QDialog):
             background-color: #E60012;
             color: #FFFFFF;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 14px;
             border: none;
             border-radius: 6px;
             padding: 8px 16px;
@@ -619,7 +619,7 @@ class SettingsDialog(QDialog):
             background-color: #007BFF;
             color: #FFFFFF;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 14px;
             border: none;
             border-radius: 6px;
             padding: 12px 16px;
@@ -633,7 +633,7 @@ class SettingsDialog(QDialog):
             background-color: #6C757D;
             color: #FFFFFF;
             font-weight: bold;
-            font-size: 11px;
+            font-size: 13px;
             border: none;
             border-radius: 4px;
             padding: 8px 12px;
@@ -649,14 +649,14 @@ class SettingsDialog(QDialog):
             border-radius: 6px;
             padding: 12px;
             color: #333333;
-            font-size: 14px;
+            font-size: 16px;
             min-height: 40px;
         }
 
         #ErrorLabel {
             color: #DC3545;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 14px;
             background-color: #F8D7DA;
             border: 1px solid #F5C6CB;
             border-radius: 4px;
@@ -847,7 +847,7 @@ class AdminWindow(QWidget):
 
         #TitleLabel {
             color: #E60012;
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
             margin-bottom: 10px;
         }
@@ -862,7 +862,7 @@ class AdminWindow(QWidget):
 
         #SectionTitle {
             color: #E60012;
-            font-size: 18px;
+            font-size: 20px;
             font-weight: bold;
             margin-bottom: 15px;
         }
@@ -875,14 +875,14 @@ class AdminWindow(QWidget):
 
         #InfoCardTitle {
             color: #333333;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 600;
             letter-spacing: 0.5px;
         }
 
         #InfoCardValue {
             color: #E60012;
-            font-size: 36px;
+            font-size: 40px;
             font-weight: 800;
         }
 
@@ -890,9 +890,9 @@ class AdminWindow(QWidget):
             background-color: #E60012;
             color: #FFFFFF;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 16px;
             border-radius: 8px;
-            padding: 8px 16px;
+            padding: 12px 24px;
         }
         #InfoRefreshButton:hover {
             background-color: #CC0010;
@@ -905,12 +905,12 @@ class AdminWindow(QWidget):
             background-color: #E60012;
             color: #FFFFFF;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 20px;
             border: none;
             border-radius: 8px;
-            padding: 15px;
+            padding: 20px;
             margin: 5px;
-            min-height: 50px;
+            min-height: 60px;
         }
         #FunctionButton:hover {
             background-color: #CC0010;
@@ -923,7 +923,7 @@ class AdminWindow(QWidget):
             background-color: #DC3545;
             color: #FFFFFF;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 16px;
             border: none;
             border-radius: 8px;
             padding: 15px;
@@ -941,7 +941,7 @@ class AdminWindow(QWidget):
             background-color: #007BFF;
             color: #FFFFFF;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 14px;
             border: none;
             border-radius: 6px;
             padding: 8px 16px;
@@ -955,7 +955,7 @@ class AdminWindow(QWidget):
             background-color: #555555;
             color: #FFFFFF;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 14px;
             border: none;
             border-radius: 6px;
             padding: 8px 16px;
@@ -968,14 +968,14 @@ class AdminWindow(QWidget):
         #InfoLabel {
             color: #666666;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 14px;
             margin: 5px;
         }
 
         #InfoValue {
             color: #E60012;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 14px;
             margin: 5px;
         }
         """
