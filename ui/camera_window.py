@@ -5,7 +5,7 @@ Camera preview and capture functionality
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                             QLabel, QPushButton, QComboBox, QGridLayout,
                             QFrame, QProgressBar, QSpinBox, QGroupBox, QDialog,
-                            QSizePolicy)
+                            QSizePolicy, QScrollArea)
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QUrl
 from PyQt6.QtMultimedia import QSoundEffect
 from PyQt6.QtGui import QPixmap, QFont, QPalette
@@ -19,6 +19,8 @@ from config import UI_SETTINGS, CAMERA_SETTINGS, APP_NAME, ASSETS_DIR
 from ui.components.navigation_header import NavigationHeader
 from ui.dialogs.custom_dialog import CustomStyledDialog
 
+MALE_PHOTO_SAMPLE_PATH = os.path.join(ASSETS_DIR, "sample_photos", "male.jpg")
+FEMALE_PHOTO_SAMPLE_PATH = os.path.join(ASSETS_DIR, "sample_photos", "female.jpg")
 
 class PhotoCaptureThread(QThread):
     """Thread for capturing multiple photos without blocking UI"""
@@ -460,13 +462,12 @@ class MainWindow(QMainWindow):
         return control_frame
 
     def create_left_section(self):
-        """Create left-side container hosting only the back button."""
+        """Create left-side container hosting only the back button and sample photos."""
         left_frame = QFrame()
         left_frame.setFrameStyle(QFrame.Shape.StyledPanel)
 
         layout = QVBoxLayout(left_frame)
         layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(0)
 
         button_style = """
             QPushButton {
@@ -496,7 +497,96 @@ class MainWindow(QMainWindow):
         self.back_to_dashboard_button.clicked.connect(self.cancel_capture_session)
         layout.addWidget(self.back_to_dashboard_button)
 
-        layout.addStretch()
+        # Scroll Area for Sample Photos
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        # Transparent background for scroll area
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                background-color: transparent;
+                border: none;
+                padding: 0;
+                margin: 0;
+            }
+            QWidget#SampleContainer {
+                background-color: transparent;
+                padding: 0;
+                margin: 0;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #f1f1f1;
+                width: 8px;
+                margin: 0px 0px 0px 0px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical {
+                background: #bdc3c7;
+                min-height: 20px;
+                border-radius: 4px;
+            }
+            QScrollBar::add-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+        """)
+
+        # Container inside Scroll Area
+        sample_container = QWidget()
+        sample_container.setObjectName("SampleContainer")
+        sample_layout = QVBoxLayout(sample_container)
+        sample_layout.setContentsMargins(0, 0, 8, 0) # Right margin for scrollbar
+        sample_layout.setSpacing(0)
+
+        def create_sample_block(title, image_path):
+            container = QWidget()
+            v_layout = QVBoxLayout(container)
+            v_layout.setContentsMargins(0, 0, 0, 0)
+            v_layout.setSpacing(2)
+
+            lbl_title = QLabel(title)
+            lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lbl_title.setStyleSheet("font-weight: bold; font-size: 16px; color: #2c3e50;")
+
+            v_layout.addWidget(lbl_title)
+
+            lbl_img = QLabel()
+            # 3:4 aspect ratio approx (300x400)
+            lbl_img.setFixedSize(300, 400)
+            lbl_img.setStyleSheet("border: 2px solid #bdc3c7; border-radius: 5px; background-color: #ecf0f1;")
+            lbl_img.setScaledContents(True)
+
+            if os.path.exists(image_path):
+                pixmap = QPixmap(image_path)
+                if not pixmap.isNull():
+                    lbl_img.setPixmap(pixmap)
+                else:
+                    lbl_img.setText("Gagal memuat foto")
+                    lbl_img.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            else:
+                lbl_img.setText("Foto tidak ditemukan")
+                lbl_img.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            v_layout.addWidget(lbl_img, 0, Qt.AlignmentFlag.AlignCenter)
+            return container
+
+        # Male Sample
+        sample_layout.addWidget(create_sample_block("Contoh Foto Pria", MALE_PHOTO_SAMPLE_PATH))
+
+        # Female Sample
+        sample_layout.addWidget(create_sample_block("Contoh Foto Wanita", FEMALE_PHOTO_SAMPLE_PATH))
+
+        sample_layout.addStretch()
+
+        scroll_area.setWidget(sample_container)
+        layout.addWidget(scroll_area)
+
         return left_frame
 
 
@@ -566,8 +656,7 @@ class MainWindow(QMainWindow):
         """Play tick sound if available."""
         if self.tick_sound:
             try:
-                if self.tick_sound.isPlaying():
-                    self.tick_sound.stop()
+                self.tick_sound.stop()
                 self.tick_sound.play()
             except Exception as e:
                 print(f"Gagal memutar efek suara: {e}")
@@ -576,8 +665,7 @@ class MainWindow(QMainWindow):
         """Play shutter sound when capturing photo."""
         if self.shutter_sound:
             try:
-                if self.shutter_sound.isPlaying():
-                    self.shutter_sound.stop()
+                self.shutter_sound.stop()
                 self.shutter_sound.play()
             except Exception as e:
                 print(f"Gagal memutar suara shutter: {e}")
@@ -875,7 +963,7 @@ class MainWindow(QMainWindow):
 
     def update_countdown(self, count):
         """Update countdown display"""
-        
+
         # Show countdown overlay
         photo_count = self.get_config_value('photo_count', CAMERA_SETTINGS['capture_count'])
 
