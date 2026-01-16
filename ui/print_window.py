@@ -16,6 +16,7 @@ from modules.print_manager import PrintManager
 from modules.database import db_manager
 from modules.session_manager import session_manager
 from ui.components.navigation_header import NavigationHeader
+from ui.dialogs.custom_dialog import CustomStyledDialog
 
 
 class PrintThread(QThread):
@@ -71,10 +72,10 @@ class PrintThread(QThread):
 class PrintWindow(QMainWindow):
     """Print preview and printing window"""
     # Slightly smaller preview surface so the card fits on low-resolution displays
-    PREVIEW_TARGET_WIDTH = 420
-    PREVIEW_TARGET_HEIGHT = 640
-    PREVIEW_PADDING = 30  # matches QLabel padding defined in the stylesheet
-    PREVIEW_SCALE_FACTOR = 0.85  # additional shrink so nothing gets clipped
+    PREVIEW_TARGET_WIDTH = 460
+    PREVIEW_TARGET_HEIGHT = 700
+    PREVIEW_PADDING = 10
+    PREVIEW_SCALE_FACTOR = 0.98
 
     print_complete = pyqtSignal(bool)  # Success/failure
     back_requested = pyqtSignal()
@@ -112,11 +113,12 @@ class PrintWindow(QMainWindow):
             title="Pratinjau & Cetak",
             subtitle="Periksa hasil akhir dan selesaikan sesi",
             prev_text="← Kembali ke Edit Foto",
-            show_next=False
+            next_text="Simpan & Cetak",
+            show_next=True
         )
         self.navigation_header.prev_clicked.connect(self.on_back_clicked)
+        self.navigation_header.next_clicked.connect(self.on_save_and_print_clicked)
         self.back_button = self.navigation_header.prev_button
-        self.finish_button = None
         root_layout.addWidget(self.navigation_header)
 
         # Main layout - use horizontal layout for better space utilization
@@ -133,14 +135,6 @@ class PrintWindow(QMainWindow):
         # Right side - Settings and controls
         right_layout = QVBoxLayout()
         right_layout.setSpacing(10)
-
-        # Status section
-        status_section = self.create_status_section()
-        right_layout.addWidget(status_section)
-
-        # Button section
-        button_section = self.create_button_section()
-        right_layout.addWidget(button_section)
 
         # Settings section
         settings_section = self.create_settings_section()
@@ -161,21 +155,26 @@ class PrintWindow(QMainWindow):
         """Create print preview section - portrait orientation like ID card"""
         frame = QFrame()
         frame.setFrameStyle(QFrame.Shape.StyledPanel)
+        frame.setObjectName("preview_frame")
+        frame.setStyleSheet("""
+            QFrame#preview_frame {
+                padding: 0;
+            }
+        """)
 
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center the entire content
+        layout.setSpacing(0)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Section title
-        title = QLabel("Pratinjau Cetak")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center the title
+        title = QLabel("Siap untuk dicetak!")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("""
             QLabel {
-                font-size: 16px;
+                font-size: 24px;
                 font-weight: bold;
                 color: #34495e;
-                margin-bottom: 10px;
+                margin-bottom: 0px;
             }
         """)
         layout.addWidget(title)
@@ -186,7 +185,6 @@ class PrintWindow(QMainWindow):
         preview_container_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         preview_container_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Preview label - portrait orientation for ID card
         self.preview_label = QLabel()
         self.preview_label.setFixedSize(
             self.PREVIEW_TARGET_WIDTH,
@@ -198,7 +196,7 @@ class PrintWindow(QMainWindow):
                 border: 2px solid #bdc3c7;
                 border-radius: 10px;
                 background-color: #f8f9fa;
-                padding: 15px;
+                padding: 6px;
             }
         """)
         preview_container_layout.addWidget(self.preview_label)
@@ -216,18 +214,6 @@ class PrintWindow(QMainWindow):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
 
-        # Title
-        title = QLabel("Pengaturan Cetak")
-        title.setStyleSheet("""
-            QLabel {
-                font-size: 16px;
-                font-weight: bold;
-                color: #34495e;
-                margin-bottom: 10px;
-            }
-        """)
-        layout.addWidget(title)
-
         # Printer selection group
         printer_group = self.create_printer_group()
         layout.addWidget(printer_group)
@@ -239,33 +225,68 @@ class PrintWindow(QMainWindow):
     def create_printer_group(self):
         """Create printer information group - readonly"""
         group = QGroupBox("Printer")
+        group.setStyleSheet("""
+            QGroupBox {
+                padding: 0;
+            }
+        """)
+        group.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         layout = QVBoxLayout(group)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(5)
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(4)
 
-        # Printer info display (readonly)
-        self.printer_info_label = QLabel("Memuat informasi printer...")
-        self.printer_info_label.setStyleSheet("""
+        status_row = QHBoxLayout()
+        status_row.setContentsMargins(0, 0, 0, 2)
+        status_label = QLabel("Status:")
+        status_label.setStyleSheet("""
+            QLabel {
+                color: #2c3e50;
+                font-size: 18px;
+            }
+        """)
+        self.printer_status_value = QLabel("Memuat...")
+        self.printer_status_value.setStyleSheet("""
             QLabel {
                 color: #2c3e50;
                 font-weight: bold;
-                font-size: 11px;
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                padding: 8px;
-                min-height: 20px;
+                font-size: 18px;
             }
         """)
-        layout.addWidget(self.printer_info_label)
+        status_row.addWidget(status_label)
+        status_row.addWidget(self.printer_status_value)
+        status_row.addStretch()
+        layout.addLayout(status_row)
+
+        name_row = QHBoxLayout()
+        name_row.setContentsMargins(0, 2, 0, 0)
+        name_label = QLabel("Nama:")
+        name_label.setStyleSheet("""
+            QLabel {
+                color: #2c3e50;
+                font-size: 18px;
+            }
+        """)
+        self.printer_name_value = QLabel("-")
+        self.printer_name_value.setStyleSheet("""
+            QLabel {
+                color: #2c3e50;
+                font-weight: bold;
+                font-size: 16px;
+            }
+        """)
+        name_row.addWidget(name_label)
+        name_row.addWidget(self.printer_name_value)
+        name_row.addStretch()
+        layout.addLayout(name_row)
 
         # Printer error label
         self.printer_error_label = QLabel("")
+        self.printer_error_label.setWordWrap(True)
         self.printer_error_label.setStyleSheet("""
             QLabel {
                 color: #DC3545;
                 font-weight: bold;
-                font-size: 10px;
+                font-size: 16px;
                 background-color: #F8D7DA;
                 border: 1px solid #F5C6CB;
                 border-radius: 4px;
@@ -277,67 +298,6 @@ class PrintWindow(QMainWindow):
         layout.addWidget(self.printer_error_label)
 
         return group
-
-    def create_status_section(self):
-        """Create status section - compact"""
-        frame = QFrame()
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(5)
-
-        # Status label
-        self.status_label = QLabel("Siap untuk mencetak")
-        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setStyleSheet("""
-            QLabel {
-                font-size: 12px;
-                color: #2c3e50;
-                margin: 5px;
-            }
-        """)
-        layout.addWidget(self.status_label)
-
-        # Progress bar
-        self.progress_bar = QProgressBar()
-        self.progress_bar.hide()
-        self.progress_bar.setMaximumHeight(20)
-        layout.addWidget(self.progress_bar)
-
-        return frame
-
-    def create_button_section(self):
-        """Create button section - compact for responsiveness"""
-        frame = QFrame()
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(8)
-
-        # Horizontal button row (flex-like)
-        self.save_button = QPushButton("💾 Simpan")
-        self.save_button.setMinimumHeight(45)
-        self.save_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.save_button.clicked.connect(self.save_id_card)
-
-        self.print_button = QPushButton("🖨️ Cetak")
-        self.print_button.setMinimumHeight(45)
-        self.print_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.print_button.clicked.connect(self.print_id_card)
-
-        self.finish_button = QPushButton("✅️ Selesaikan Sesi")
-        self.finish_button.setMinimumHeight(45)
-        self.finish_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.finish_button.setObjectName("finishButton")
-        self.finish_button.clicked.connect(self.on_finish_clicked)
-
-        button_row = QHBoxLayout()
-        button_row.setSpacing(12)
-        button_row.addWidget(self.save_button)
-        button_row.addWidget(self.print_button)
-        button_row.addWidget(self.finish_button)
-
-        layout.addLayout(button_row)
-
-        return frame
 
     def create_id_card(self):
         """Create ID card from processed image"""
@@ -495,29 +455,46 @@ class PrintWindow(QMainWindow):
             printers = self.print_manager.get_available_printers()
 
             if not default_printer:
-                self.printer_info_label.setText("Tidak ada printer yang dikonfigurasi\nHubungi admin untuk mengatur printer")
+                self.printer_status_value.setText("Not Ready")
+                self.printer_name_value.setText("-")
+                self.printer_error_label.setText("Tidak ada printer yang dikonfigurasi. Hubungi admin untuk mengatur printer.")
+                self.printer_error_label.show()
                 return
 
             # Find the configured printer
             printer_found = False
+            printer_name = default_printer
+            printer_status_text = "Not Ready"
             for printer in printers:
                 if default_printer.lower() in printer['name'].lower():
-                    self.printer_info_label.setText(f"Printer yang Dikonfigurasi:\n{printer['name']}\nStatus: {printer['status']}")
                     printer_found = True
+                    printer_name = printer['name']
+                    printer_status_text = "Printer Ready" if printer.get('status', '').lower() != 'unavailable' else "Not Ready"
                     break
 
+            self.printer_name_value.setText(printer_name)
+            self.printer_status_value.setText(printer_status_text)
+
             if not printer_found:
-                self.printer_info_label.setText(f"Printer yang Dikonfigurasi:\n{default_printer}\n(Tidak Tersedia)")
+                self.printer_error_label.setText(f"Printer yang dikonfigurasi '{default_printer}' tidak tersedia. Silakan hubungi admin untuk memperbarui pengaturan printer.")
+                self.printer_error_label.show()
+            else:
+                self.printer_error_label.hide()
 
         except Exception as e:
             print(f"Error updating printer info display: {e}")
-            self.printer_info_label.setText("Kesalahan memuat informasi printer")
+            self.printer_status_value.setText("Not Ready")
+            self.printer_name_value.setText("-")
+            self.printer_error_label.setText("Kesalahan memuat informasi printer")
+            self.printer_error_label.show()
 
     def validate_printer_from_database(self):
         """Validate if the printer from database is still available"""
         try:
             default_printer = db_manager.get_app_config('default_printer')
             if not default_printer:
+                self.printer_status_value.setText("Not Ready")
+                self.printer_name_value.setText("-")
                 self.printer_error_label.hide()
                 return
 
@@ -528,12 +505,16 @@ class PrintWindow(QMainWindow):
             for printer in printers:
                 if default_printer.lower() in printer['name'].lower():
                     printer_found = True
+                    self.printer_name_value.setText(printer['name'])
+                    self.printer_status_value.setText("Printer Ready" if printer.get('status', '').lower() != 'unavailable' else "Not Ready")
                     break
 
             if not printer_found:
                 # Printer not found, show error
                 self.printer_error_label.setText(f"⚠️ Printer yang dikonfigurasi '{default_printer}' tidak tersedia. Silakan hubungi admin untuk memperbarui pengaturan printer.")
                 self.printer_error_label.show()
+                self.printer_status_value.setText("Not Ready")
+                self.printer_name_value.setText(default_printer)
             else:
                 # Printer is available, hide error
                 self.printer_error_label.hide()
@@ -546,7 +527,7 @@ class PrintWindow(QMainWindow):
     def print_id_card(self):
         """Print ID card"""
         if not self.id_card_image:
-            self.status_label.setText("Tidak ada ID card untuk dicetak")
+            self.print_complete.emit(False)
             return
 
         if self.print_thread and self.print_thread.isRunning():
@@ -555,20 +536,19 @@ class PrintWindow(QMainWindow):
         # Get printer from database
         printer_name = db_manager.get_app_config('default_printer')
         if not printer_name:
-            self.status_label.setText("Tidak ada printer yang dikonfigurasi")
+            self.print_complete.emit(False)
             return
 
         # Validate printer is available
         if not self.auto_select_printer_from_database():
-            self.status_label.setText("Printer yang dikonfigurasi tidak tersedia")
+            self.print_complete.emit(False)
             return
 
         copies = self.get_copy_count()
 
-        # Disable print button and show progress
-        self.print_button.setEnabled(False)
-        self.progress_bar.show()
-        self.progress_bar.setValue(0)
+        # Disable navigation next button during printing
+        if self.navigation_header.next_button:
+            self.navigation_header.next_button.setEnabled(False)
 
         # Start print thread
         self.print_thread = PrintThread(
@@ -583,25 +563,20 @@ class PrintWindow(QMainWindow):
         self.print_thread.status_update.connect(self.update_print_status)
         self.print_thread.print_complete.connect(self.on_print_complete)
         self.print_thread.start()
+        return
 
     def update_print_progress(self, value):
         """Update print progress"""
-        self.progress_bar.setValue(value)
+        pass
 
     def update_print_status(self, message):
         """Update print status"""
-        self.status_label.setText(message)
+        pass
 
     def on_print_complete(self, success):
         """Handle print completion"""
-        self.progress_bar.hide()
-        self.print_button.setEnabled(True)
-
-        if success:
-            self.status_label.setText("Pekerjaan cetak berhasil diselesaikan!")
-            self.save_id_card()
-        else:
-            self.status_label.setText("Pekerjaan cetak gagal")
+        if self.navigation_header.next_button:
+            self.navigation_header.next_button.setEnabled(True)
 
         self.print_complete.emit(success)
 
@@ -611,7 +586,6 @@ class PrintWindow(QMainWindow):
 
     def on_finish_clicked(self):
         """Handle finish button click to end session"""
-        self.finish_button.setEnabled(False)
         self.close()
         self.logout_requested.emit()
 
@@ -711,29 +685,38 @@ class PrintWindow(QMainWindow):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # Include milliseconds
         return f"{user_npk}_{file_type}_{timestamp}.{extension}"
 
+    def on_save_and_print_clicked(self):
+        """Handle 'Simpan & Cetak' action from navigation header."""
+        if self.print_thread and self.print_thread.isRunning():
+            return
+
+        save_success = self.save_id_card()
+        if not save_success:
+            return
+
+        self.print_id_card()
+
     def save_id_card(self):
         """Save ID card to database and files"""
         try:
             if not self.id_card_image:
-                self.status_label.setText("Tidak ada ID card untuk disimpan")
-                return
+                return False
 
             # Get current user
             current_user = session_manager.get_current_user()
             if not current_user:
-                self.status_label.setText("Tidak ada pengguna yang login")
-                return
+                return False
 
             # Get image save path from database configuration
             image_save_path = db_manager.get_app_config('image_save_path')
             if not image_save_path:
                 self.show_save_error("Path simpan gambar tidak dikonfigurasi. Silakan hubungi administrator.")
-                return
+                return False
 
             # Check if the configured path exists
             if not os.path.exists(image_save_path):
                 self.show_save_error(f"Direktori simpan gambar tidak ada:\n{image_save_path}\n\nSilakan hubungi administrator untuk membuat direktori.")
-                return
+                return False
 
             user_npk = current_user['npk']
             current_time = datetime.now()
@@ -795,23 +778,21 @@ class PrintWindow(QMainWindow):
 
             success = db_manager.update_user(user_npk, update_data)
             if not success:
-                self.status_label.setText("Gagal memperbarui database pengguna")
-                return
+                return False
 
             # Add photo history record
             history_success = db_manager.add_photo_history(user_npk, current_time)
             if not history_success:
-                self.status_label.setText("Gagal menambahkan riwayat foto")
-                return
+                return False
 
             # Update session manager with new photo info
             session_manager.update_user_photo_info(photo_filename, card_filename)
 
-            self.status_label.setText(f"ID card berhasil disimpan!\nFoto: {photo_filename}\nKartu: {card_filename}")
+            return True
 
         except Exception as e:
-            self.status_label.setText(f"Kesalahan simpan: {str(e)}")
             print(f"Error saving ID card: {e}")
+            return False
 
     def show_save_error(self, message):
         """Show error dialog for save failures"""

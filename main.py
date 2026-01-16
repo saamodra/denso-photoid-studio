@@ -1,4 +1,4 @@
-﻿"""
+"""
 ID Card Photo Machine - Main Application
 Desktop application for automated ID card photo processing
 """
@@ -623,31 +623,22 @@ class IDCardPhotoApp:
 
     def on_print_complete(self, success):
         """Handle print completion"""
+        from ui.dialogs.custom_dialog import CustomStyledDialog
+
         if success:
             dialog = CustomStyledDialog(
                 self.current_window,
-                "Pencetakan selesai",
-                "ID Card berhasil dicetak!!\n\nMohon bersabar, silahkan ditunggu",
-                [("OK", QDialog.DialogCode.Accepted)]
+                "Proses Cetak Berhasil!",
+                "Kartu berhasil dicetak dan fotonya sudah tersimpan otomatis.\n\nSilakan ambil ID card Anda.",
+                [("Selesai", QDialog.DialogCode.Accepted)]
             )
         else:
             dialog = CustomStyledDialog(
                 self.current_window,
-                "Pencetakan gagal",
-                "ID Card gagal dicetak.\n\nMohon hubungi administrator segera!!!",
-                [("OK", QDialog.DialogCode.Accepted)]
-                # [("Cancel", QDialog.DialogCode.Rejected), ("Try Again", QDialog.DialogCode.Accepted), ("Start Over", 2)]
+                "Ups! Proses Cetak Gagal",
+                "File Foto/ID Anda tersimpan otomatis, hanya saja mesin tidak bisa mencetak saat ini.\n\nMohon hubungi admin untuk membantu proses cetak.",
+                [("Selesai", QDialog.DialogCode.Accepted)]
             )
-
-            # dialog.set_cancel_button(0)  # "Cancel" button as cancel
-
-            # result = dialog.exec()
-            # if result == QDialog.DialogCode.Accepted:
-            #     # Stay on print window
-            #     pass
-            # elif result == 2:  # Start Over
-            # else:
-            #     self.app.quit()
 
         dialog.exec()
         self.logout()
@@ -828,4 +819,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
