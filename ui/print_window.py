@@ -113,7 +113,7 @@ class PrintWindow(QMainWindow):
             title="Pratinjau & Cetak",
             subtitle="Periksa hasil akhir dan selesaikan sesi",
             prev_text="← Kembali ke Edit Foto",
-            next_text="Simpan & Cetak",
+            next_text="Simpan / Cetak",
             show_next=True
         )
         self.navigation_header.prev_clicked.connect(self.on_back_clicked)
@@ -659,6 +659,7 @@ class PrintWindow(QMainWindow):
             }
             /* Primary red finish button */
             QPushButton#finishButton {
+                border-radius: 25px;
                 background-color: #E60012;
                 color: white;
             }

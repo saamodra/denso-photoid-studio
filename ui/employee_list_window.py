@@ -381,18 +381,55 @@ class EmployeeListPage(QWidget):
 
             # Tombol Detail
             detail_button = QPushButton("Detail 📄")
+            detail_button.setObjectName("detail_button")
             detail_button.setToolTip("Lihat Detail")
             detail_button.clicked.connect(lambda ch, employee=employee: self.show_employee_detail(employee))
+            detail_button.setStyleSheet("""
+                QPushButton#detail_button {
+                background-color: #90DACC;
+                    color: white;
+                    font-size: 14px;
+                    font-weight: bold;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 8px 14px;
+                }
+                QPushButton#detail_button:hover {
+                    background-color: #90DAAA;
+                }
+                QPushButton#detail_button:pressed {
+                    background-color: #90DAAA;
+                }
+            """)
 
             # Tombol Hapus
             delete_button = QPushButton("Hapus 🗑️")
+            delete_button.setObjectName("delete_button")
             delete_button.setToolTip("Hapus Data")
             delete_button.clicked.connect(lambda ch, npk=employee.get("npk"): self.delete_employee(npk))
 
             # Tombol Konfirmasi
             confirmation_button = QPushButton("Setujui ✅")
+            confirmation_button.setObjectName("confirmation_button")
             confirmation_button.setToolTip("Beri Respon pada Request")
             confirmation_button.clicked.connect(lambda ch, employee=employee: self.confirm_employee(employee, self.current_user))
+            confirmation_button.setStyleSheet("""
+                QPushButton#confirmation_button {
+                    background-color: #7BB662;
+                    color: white;
+                    font-size: 14px;
+                    font-weight: bold;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 8px 14px;
+                }
+                QPushButton#confirmation_button:hover {
+                    background-color: #7BB6AA;
+                }
+                QPushButton#confirmation_button:pressed {
+                    background-color: #7BB6AA;
+                }
+            """)
             confirmation_button.setEnabled(approved_button)  # hanya aktif jika status 'requested'
 
             # Tambahkan tombol ke layout

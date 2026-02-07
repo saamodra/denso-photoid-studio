@@ -250,7 +250,7 @@ class SelectionWindow(QMainWindow):
             row = i // cols
             col = i % cols
 
-            thumbnail = PhotoThumbnail(photo_path, size=(480, 360))
+            thumbnail = PhotoThumbnail(photo_path, size=(480, 300))
             thumbnail.clicked.connect(self.on_photo_selected)
 
             self.photos_layout.addWidget(thumbnail, row, col)
@@ -292,7 +292,8 @@ class SelectionWindow(QMainWindow):
             image = Image.open(photo_path)
 
             # Resize to fit preview area while maintaining aspect ratio
-            preview_size = (600, 450)
+            # preview_size = (600, 450)
+            preview_size = (600, 650)
             image.thumbnail(preview_size, Image.Resampling.LANCZOS)
 
             # Save temporary preview

@@ -105,13 +105,13 @@ class ProcessingWindow(QMainWindow):
         self.next_button = self.navigation_header.next_button
         main_layout.addWidget(self.navigation_header)
 
-        # Content layout - previews only
-        preview_section = self.create_preview_section()
-        main_layout.addWidget(preview_section)
-
         # Progress section
         progress_section = self.create_progress_section()
         main_layout.addWidget(progress_section)
+
+        # Content layout - previews only
+        preview_section = self.create_preview_section()
+        main_layout.addWidget(preview_section)
 
         # Apply styling
         self.apply_style()
@@ -203,7 +203,7 @@ class ProcessingWindow(QMainWindow):
             self.save_button.setMinimumHeight(45)
             self.save_button.setEnabled(False)
             self.save_button.clicked.connect(self.save_processed_image)
-            layout.addWidget(self.save_button, alignment=Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(self.save_button, alignment=Qt.AlignmentFlag.AlignRight)
 
         return frame
 

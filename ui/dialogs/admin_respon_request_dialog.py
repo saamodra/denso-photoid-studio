@@ -81,11 +81,11 @@ class AdminResponseDialog(QDialog):
         self.cancel_button.setObjectName("CancelButton")
         self.cancel_button.clicked.connect(self.reject) # QDialog.reject()
 
-        self.reject_button = QPushButton("Tolak Permintaan")
+        self.reject_button = QPushButton("Tolak")
         self.reject_button.setObjectName("RejectButton")
         self.reject_button.clicked.connect(self._handle_reject)
 
-        self.approve_button = QPushButton("Setujui Permintaan")
+        self.approve_button = QPushButton("Setujui")
         self.approve_button.setObjectName("ApproveButton")
         self.approve_button.clicked.connect(self._handle_approve)
 
@@ -99,14 +99,14 @@ class AdminResponseDialog(QDialog):
         
     def apply_styles(self):
         """Menerapkan styling ke seluruh widget dialog."""
-        primary_color = "#E60012"
-        primary_hover_color = "#C30010"
+        primary_color = "#7BB662"
+        primary_hover_color = "#7BB6DD"
         dark_font_color = "#212121"
         light_font_color = "#757575"
         border_color = "#E0E0E0"
         reject_color = "#424242"
         reject_hover_color = "#313131"
-        cancel_color = "#BDBDBD"
+        cancel_color = "#ABABAB"
         
         self.setStyleSheet(f"""
             QDialog {{ background-color: #FFFFFF; }}
@@ -160,6 +160,7 @@ class AdminResponseDialog(QDialog):
             #CancelButton {{
                 background-color: {cancel_color};
                 color: {dark_font_color};
+                margin-right: 50px;
             }}
             #CancelButton:hover {{ background-color: #A1A1A1; }}
         """)
