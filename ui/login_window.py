@@ -46,7 +46,7 @@ class LoginPage(QWidget):
         # --- Tambahkan Widget ke Kontainer ---
 
         # Judul
-        title = QLabel("Selamat Datang")
+        title = QLabel("Selamat Datang di PhotoID Machine")
         title.setFont(QFont("Helvetica", 32, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setObjectName("TitleLabel")
@@ -77,6 +77,11 @@ class LoginPage(QWidget):
         # self.password_entry.setText("admin123")
         container_layout.addWidget(password_label)
         container_layout.addWidget(self.password_entry)
+
+        
+        # Enter di NPK -> pindah ke Password
+        self.id_entry.returnPressed.connect(self.password_entry.setFocus)
+        # Enter di Password -> check login
         self.password_entry.returnPressed.connect(self.check_login)
 
         container_layout.addSpacing(20)
@@ -207,10 +212,10 @@ class LoginPage(QWidget):
 
             /* Style untuk tombol */
             QPushButton {
-                background-color: #E60012; /* merah Denso */
+                background-color: #4A90E2; /* merah Denso */
                 color: #FFFFFF;
                 font-weight: bold;
-                font-size: 22px;
+                font-size: 36px;
                 border: none;
                 border-radius: 30px;
                 padding: 22px 38px;

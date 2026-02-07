@@ -38,9 +38,10 @@ class RoleSelectionWindow(QWidget):
         title = QLabel("Pilih Peran Anda")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setObjectName("TitleLabel")
-        main_layout.addWidget(title)
+
         main_layout.addSpacing(20)
         main_layout.addStretch()
+        main_layout.addWidget(title)
 
         # Tombol User
         self.user_btn = QPushButton(" Masuk sebagai User")
@@ -129,7 +130,7 @@ class RoleSelectionWindow(QWidget):
             background-color: #E60012;
             color: #FFFFFF;
             font-weight: bold;
-            font-size: 24px;
+            font-size: 34px;
             border: none;
             border-radius: 30px;
             padding: 24px 48px;
@@ -142,12 +143,12 @@ class RoleSelectionWindow(QWidget):
         }
 
         #LogoutButton {
-            background-color: #555555;
+            background-color: #2C3E50;
             border-radius: 18px;
             padding: 18px 28px;
-            font-size: 18px;
+            font-size: 24px;
         }
         #LogoutButton:hover {
-            background-color: #333333;
+            background-color: #CC0010;
         }
         """
